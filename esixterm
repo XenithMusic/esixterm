@@ -346,7 +346,7 @@ match cmdargs.command:
 
         }
         for i,post in enumerate(posts):
-            downloads[i] = api.fetchResourceAsync(post["preview"]["url"])
+            downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews")
             pass
         for i,post in enumerate(posts):
             imgPath = downloads[i].result()

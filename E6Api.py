@@ -61,14 +61,14 @@ def apiReq(endpoint,params,service="https://e621.net",method="GET"):
     else:
         return True,r.json()
 
-def fetchResourceAsync(target) -> concurrent.futures.Future:
+def fetchResourceAsync(target,type="images") -> concurrent.futures.Future:
     return executor.submit(fetchResource,target)
 
-def fetchResource(target):
+def fetchResource(target,type="images"):
     if target == None:
         return None
     element = target.split("/")[-1]
-    path = tempfile.gettempdir().rstrip("/") + "/esixterm/images/"
+    path = tempfile.gettempdir().rstrip("/") + f"/esixterm/{type}/"
     os.makedirs(path,exist_ok=True)
     path += element
     r = requests.get(target,
