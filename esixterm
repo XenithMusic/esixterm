@@ -34,10 +34,11 @@ api.setApiAuth(conf["username"],conf["apiKey"])
 
 ap = argparse.ArgumentParser(prog="esixterm",description="An e621 viewer for the commandline.",add_help=False)
 
-allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w)"
+allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w), 'favorite' (fave,f)"
 lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
 allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
 allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
+allowedFaves = "'post', 'tag', 'pool'"
 
 ap.add_argument("command",nargs="?",help=f"The command to perform. One of {allowedCmds}",default="persist")
 cmdargs,remaining = ap.parse_known_args()
@@ -53,11 +54,17 @@ aliases = {
     "<":"last",
     "cp":"copy",
     "c":"copy",
-    "w":"wiki"
+    "w":"wiki",
+    "fave":"favorite",
+    "f":"favorite"
 }
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"esixterm {cmdargs.command}",description="An e621 viewer for the commandline.")
 match cmdargs.command:
+    case "favorite":
+        ap2.add_argument("type",help=f"One of {allowedFaves}")
+        ap2.add_argument("which",help="'last', a numeric id, or a search query that will result in one of (type) only.")
+        ap2.add_argument("-u","--unfavorite",help="Removes from your favorites instead of adding.",action="store_true")
     case "persist":
         hist = []
         while True:
@@ -238,6 +245,48 @@ if cmdargs.command in ["last"]:
         args.id = last["post"]
 
 match cmdargs.command:
+    case "favorite":
+        method = list.append
+        if args.unfavorite:
+            method = list.remove
+        match args.type:
+            case "tag":
+                if args.which == "last":
+                    if len(last["query"]) > 1:
+                        ap2.error("more than one tag in last query")
+                    elif len(last["query"]) == 0:
+                        ap2.error("no tags in last query")
+                    else:
+                        method(faves["tags"],[
+                            last["query"][0]
+                        ])
+                elif args.which.isdigit():
+                    pass
+            case "post":
+                if args.which == "last":
+                    method(faves["posts"],[
+                        last["post"]
+                    ])
+                elif args.which.isdigit():
+                    method(faves["posts"],[
+                        int(args.which)
+                    ])
+                else:
+                    success,response = api.search(args.tags,page=args.page,limit=args.limit)
+                    if success == False:
+                        raise ConnectionError(response)
+                    else:
+                        # print(" ".join(args.tags))
+                        # print(response)
+                        posts = response["posts"]
+                        if len(posts) > 1:
+                            ap2.error("more than one result from search query")
+                        elif len(posts) == 0:
+                            ap2.error("no results from search query")
+                        else:
+                            method(faves["posts"],[
+                                posts[0]["id"]
+                            ])
     case "wiki":
         success,wikis = api.searchWiki(args.search,limit=10)
         if success == False:
