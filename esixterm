@@ -19,7 +19,6 @@ config.registerKey("threadedWorkers",8,kind="conf.json")
 conf = config.getConfig(kind="conf.json")
 config.registerKey("tags",[],kind="faves.json")
 config.registerKey("posts",[],kind="faves.json")
-config.registerKey("pools",[],kind="faves.json")
 faves = config.getConfig(kind="faves.json")
 config.registerKey("results",{},kind="last.json")
 config.registerKey("query","",kind="last.json")
@@ -38,7 +37,7 @@ allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 
 lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
 allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
 allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
-allowedFaves = "'post', 'tag', 'pool'"
+allowedFaves = "'post', 'tag'"
 
 ap.add_argument("command",nargs="?",help=f"The command to perform. One of {allowedCmds}",default="persist")
 cmdargs,remaining = ap.parse_known_args()
@@ -56,15 +55,18 @@ aliases = {
     "c":"copy",
     "w":"wiki",
     "fave":"favorite",
-    "f":"favorite"
+    "f":"favorite",
+    "favorites":"favorite"
 }
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"esixterm {cmdargs.command}",description="An e621 viewer for the commandline.")
 match cmdargs.command:
     case "favorite":
         ap2.add_argument("type",help=f"One of {allowedFaves}")
-        ap2.add_argument("which",help="'last', a numeric id, or a search query that will result in one of (type) only.")
-        ap2.add_argument("-u","--unfavorite",help="Removes from your favorites instead of adding.",action="store_true")
+        ap2.add_argument("which",nargs='?',help="'last', a numeric id, or a search query that will result in one of (type) only.")
+        ap2.add_argument("-u","--unfavorite",default=False,help="Removes from your favorites instead of adding.",action="store_true")
+        ap2.add_argument("-s","--show",default=False,help="Shows your favorites",action="store_true")
+        ap2.add_argument("-p","--page",help="The target page. (10 posts per page, 30 tags per page)",default=1,type=int)
     case "persist":
         hist = []
         while True:
@@ -111,6 +113,11 @@ match cmdargs.command:
 termCols = term_image.utils.get_terminal_size().columns
 
 args = ap2.parse_args(remaining)
+
+if cmdargs.command == "favorites":
+    if not args.show:
+        if not args.which:
+            ap2.error("you must pass either 'which' or '--show'!")
 
 aliases = {
     "last":{
@@ -218,6 +225,59 @@ def showFullView(id):
     movdown(max(movedLeft,movedRight))
     curx(0)
 
+def showListView(posts,statusString):
+    printw(statusString)
+    printw("§90s§" + " "*termCols)
+    downloads:dict[int,api.concurrent.futures.Future] = {
+
+    }
+    for i,post in enumerate(posts):
+        downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews")
+        pass
+    for i,post in enumerate(posts):
+        imgPath = downloads[i].result()
+        if imgPath == None:
+            print("\n"*10,end="")
+            wrapLen = termCols
+        else:
+            postPreview = term_image.image.from_file(imgPath,height=10)
+            if postPreview.width/termCols >= 0.5:
+                postPreview.width = math.floor(termCols*0.5)
+            postPreview.draw(h_align="right",v_align="top",pad_height=1)
+            wrapLen = termCols-postPreview.width
+        savecur()
+        movup(10)
+        movedLines = 0
+        firstRow = [CString("§0b§Attribution:")]
+        for tag in post["tags"]["artist"]: firstRow.append(tagArtist(tag))
+        for tag in post["tags"]["copyright"]: firstRow.append(tagCopyright(tag))
+        for tag in post["tags"]["contributor"]: firstRow.append(tagContributor(tag))
+        secondRow = [CString("§0b§Subjects:")]
+        for tag in post["tags"]["character"]: secondRow.append(tagCharacter(tag))
+        for tag in post["tags"]["species"]: secondRow.append(tagSpecies(tag))
+        thirdRow = [CString("§0b§Details:")]
+        for tag in post["tags"]["general"]: thirdRow.append(tagGeneral(tag))
+        for tag in post["tags"]["lore"]: thirdRow.append(tagLore(tag))
+        fourthRow = [CString("§0b§Meta:")]
+        for tag in post["tags"]["meta"]: fourthRow.append(tagMeta(tag))
+        for tag in post["tags"]["invalid"]: fourthRow.append(tagInvalid(tag))
+        movedLines = printw(CString(f"§b§Description: §§\n{DText.renderDText(post["description"].rstrip("\n"))}\n"),movedLines=movedLines)
+        printw(CString(f"(§b§Idx: §§{i+1})".rjust(wrapLen)))
+        movup(1)
+        movedLines = printw(CString(f"§b§Id: §§{post["id"]}"),wrapLen=wrapLen,movedLines=movedLines)
+        if len(firstRow) > 1: movedLines = printw(CString(" ").join(firstRow),wrapLen=wrapLen,movedLines=movedLines)
+        if len(secondRow) > 1: movedLines = printw(CString(" ").join(secondRow),wrapLen=wrapLen,movedLines=movedLines)
+        if len(thirdRow) > 1: movedLines = printw(CString(" ").join(thirdRow),wrapLen=wrapLen,movedLines=movedLines)
+        if len(fourthRow) > 1: movedLines = printw(CString(" ").join(fourthRow),wrapLen=wrapLen,movedLines=movedLines)
+        movedLines = prints("",movedLines=movedLines)
+        movedLines = printw(f"§b§Rating: {colorRating(post["rating"])}",wrapLen=wrapLen,movedLines=movedLines)
+        # print(CString(" ").join([tagGeneral("general"),tagArtist("artist"),tagContributor("contributor"),tagCopyright("copyright"),tagCharacter("character"),tagSpecies("species"),tagInvalid("invalid"),tagMeta("meta"),tagLore("lore")]))
+        # printw(CString.from_flike('{tagGeneral("general")} {tagArtist("artist")} {tagContributor("contributor")} {tagCopyright("copyright")} {tagCharacter("character")} {tagSpecies("species")} {tagInvalid("invalid")} {tagMeta("meta")} {tagLore("lore")}'),wrapLen=wrapLen)
+        while movedLines < 10:
+            movedLines = prints(f"",movedLines=movedLines)
+        movedLines = printw("§90s§" + " "*termCols,movedLines=movedLines)
+    printw(statusString)
+
 if cmdargs.command == "page":
     cmdargs.command = "last"
     args.type = "search"
@@ -249,44 +309,73 @@ match cmdargs.command:
         method = list.append
         if args.unfavorite:
             method = list.remove
-        match args.type:
-            case "tag":
-                if args.which == "last":
-                    if len(last["query"]) > 1:
-                        ap2.error("more than one tag in last query")
-                    elif len(last["query"]) == 0:
-                        ap2.error("no tags in last query")
-                    else:
-                        method(faves["tags"],[
-                            last["query"][0]
-                        ])
-                elif args.which.isdigit():
-                    pass
-            case "post":
-                if args.which == "last":
-                    method(faves["posts"],[
-                        last["post"]
-                    ])
-                elif args.which.isdigit():
-                    method(faves["posts"],[
-                        int(args.which)
-                    ])
-                else:
-                    success,response = api.search(args.tags,page=args.page,limit=args.limit)
-                    if success == False:
+        if args.show:
+            types = { # (args.type):((faves index),(page size))
+                "tag":("tags",30),
+                "post":("posts",10)
+            }
+            faveName = types[args.type][0]
+            per = types[args.type][1]
+            page = args.page
+            paginated = faves[faveName][(page-1)*per:page*per]
+            match args.type:
+                case "tag":
+                    for item in paginated:
+                        printw(item)
+                case "post":
+                    success,response = api.getPosts(paginated,per,1)
+                    if not success:
                         raise ConnectionError(response)
-                    else:
-                        # print(" ".join(args.tags))
-                        # print(response)
-                        posts = response["posts"]
-                        if len(posts) > 1:
-                            ap2.error("more than one result from search query")
-                        elif len(posts) == 0:
-                            ap2.error("no results from search query")
+                    showListView(response["posts"],CString(f"§b§Page §§{page} - §b§Favorites"))
+        else:
+            match args.type:
+                case "tag":
+                    if args.which == "last":
+                        if len(last["query"]) > 1:
+                            ap2.error("more than one tag in last query")
+                        elif len(last["query"]) == 0:
+                            ap2.error("no tags in last query")
                         else:
-                            method(faves["posts"],[
-                                posts[0]["id"]
-                            ])
+                            method(faves["tags"],
+                                last["query"][0]
+                            )
+                    elif args.which.isdigit():
+                        success,response = api.getTag(int(args.which))
+                        if not success:
+                            raise ConnectionError(response)
+                        method(faves["tags"],
+                            response["name"]
+                        )
+                    else:
+                        method(faves["tags"],
+                            args.which
+                        )
+                case "post":
+                    if args.which == "last":
+                        method(faves["posts"],
+                            last["post"]
+                        )
+                    elif args.which.isdigit():
+                        method(faves["posts"],
+                            int(args.which)
+                        )
+                    else:
+                        success,response = api.search(args.tags,page=args.page,limit=args.limit)
+                        if success == False:
+                            raise ConnectionError(response)
+                        else:
+                            # print(" ".join(args.tags))
+                            # print(response)
+                            posts = response["posts"]
+                            if len(posts) > 1:
+                                ap2.error("more than one result from search query")
+                            elif len(posts) == 0:
+                                ap2.error("no results from search query")
+                            else:
+                                method(faves["posts"],[
+                                    posts[0]["id"]
+                                ])
+            config.saveConfig(faves,"faves.json")
     case "wiki":
         success,wikis = api.searchWiki(args.search,limit=10)
         if success == False:
@@ -340,57 +429,7 @@ match cmdargs.command:
         # image = term_image.image.from_file("demopreview.png",height=10)
         # if image.width/termCols >= 0.5:
         #     image.width = math.floor(termCols*0.5)
-        printw(CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
-        printw("§90s§" + " "*termCols)
-        downloads:dict[int,api.concurrent.futures.Future] = {
-
-        }
-        for i,post in enumerate(posts):
-            downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews")
-            pass
-        for i,post in enumerate(posts):
-            imgPath = downloads[i].result()
-            if imgPath == None:
-                print("\n"*10,end="")
-                wrapLen = termCols
-            else:
-                postPreview = term_image.image.from_file(imgPath,height=10)
-                if postPreview.width/termCols >= 0.5:
-                    postPreview.width = math.floor(termCols*0.5)
-                postPreview.draw(h_align="right",v_align="top",pad_height=1)
-                wrapLen = termCols-postPreview.width
-            savecur()
-            movup(10)
-            movedLines = 0
-            firstRow = [CString("§0b§Attribution:")]
-            for tag in post["tags"]["artist"]: firstRow.append(tagArtist(tag))
-            for tag in post["tags"]["copyright"]: firstRow.append(tagCopyright(tag))
-            for tag in post["tags"]["contributor"]: firstRow.append(tagContributor(tag))
-            secondRow = [CString("§0b§Subjects:")]
-            for tag in post["tags"]["character"]: secondRow.append(tagCharacter(tag))
-            for tag in post["tags"]["species"]: secondRow.append(tagSpecies(tag))
-            thirdRow = [CString("§0b§Details:")]
-            for tag in post["tags"]["general"]: thirdRow.append(tagGeneral(tag))
-            for tag in post["tags"]["lore"]: thirdRow.append(tagLore(tag))
-            fourthRow = [CString("§0b§Meta:")]
-            for tag in post["tags"]["meta"]: fourthRow.append(tagMeta(tag))
-            for tag in post["tags"]["invalid"]: fourthRow.append(tagInvalid(tag))
-            movedLines = printw(CString(f"§b§Description: §§\n{DText.renderDText(post["description"].rstrip("\n"))}\n"),movedLines=movedLines)
-            printw(CString(f"(§b§Idx: §§{i+1})".rjust(wrapLen)))
-            movup(1)
-            movedLines = printw(CString(f"§b§Id: §§{post["id"]}"),wrapLen=wrapLen,movedLines=movedLines)
-            if len(firstRow) > 1: movedLines = printw(CString(" ").join(firstRow),wrapLen=wrapLen,movedLines=movedLines)
-            if len(secondRow) > 1: movedLines = printw(CString(" ").join(secondRow),wrapLen=wrapLen,movedLines=movedLines)
-            if len(thirdRow) > 1: movedLines = printw(CString(" ").join(thirdRow),wrapLen=wrapLen,movedLines=movedLines)
-            if len(fourthRow) > 1: movedLines = printw(CString(" ").join(fourthRow),wrapLen=wrapLen,movedLines=movedLines)
-            movedLines = prints("",movedLines=movedLines)
-            movedLines = printw(f"§b§Rating: {colorRating(post["rating"])}",wrapLen=wrapLen,movedLines=movedLines)
-            # print(CString(" ").join([tagGeneral("general"),tagArtist("artist"),tagContributor("contributor"),tagCopyright("copyright"),tagCharacter("character"),tagSpecies("species"),tagInvalid("invalid"),tagMeta("meta"),tagLore("lore")]))
-            # printw(CString.from_flike('{tagGeneral("general")} {tagArtist("artist")} {tagContributor("contributor")} {tagCopyright("copyright")} {tagCharacter("character")} {tagSpecies("species")} {tagInvalid("invalid")} {tagMeta("meta")} {tagLore("lore")}'),wrapLen=wrapLen)
-            while movedLines < 10:
-                movedLines = prints(f"",movedLines=movedLines)
-            movedLines = printw("§90s§" + " "*termCols,movedLines=movedLines)
-        printw(CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
+        showListView(posts,CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
                 
 
 config.saveConfig(last,"last.json")

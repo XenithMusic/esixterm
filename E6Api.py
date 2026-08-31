@@ -62,7 +62,7 @@ def apiReq(endpoint,params,service="https://e621.net",method="GET"):
         return True,r.json()
 
 def fetchResourceAsync(target,type="images") -> concurrent.futures.Future:
-    return executor.submit(fetchResource,target)
+    return executor.submit(fetchResource,target,type)
 
 def fetchResource(target,type="images"):
     if target == None:
@@ -90,6 +90,15 @@ def search(tags:list[str],limit=10,page=1,service:str=None):
     },service=service)
     return success,body
 
+def getPosts(ids:list[int],limit=10,page=1,service:str=None):
+    if len(ids) == 0: return True,{"posts":[]}
+    tags = " ".join([f"~id:{x}" for x in ids])
+    return apiReq("posts.json",{
+        "limit":limit,
+        "tags":tags,
+        "page":page
+    },service=service)
+
 def getPost(id:int):
     return apiReq(f"posts/{id}.json",{})
 
@@ -98,3 +107,6 @@ def searchWiki(search:str,limit=10):
         "search[title]":search,
         "limit":limit
     })
+
+def getTag(id:int):
+    return apiReq(f"tags/{id}.json")
