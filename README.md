@@ -44,10 +44,10 @@ Several commands are only available in the interactive environment. They are lis
 ## Known Issues
 |Issue|Description|Workarounds|
 |-|-|-|
-|#1|Kitty images break when resizing the terminal.|`$ clear` or `[esixterm] clear`.|
-|#2|In some terminals, spoilers cannot be revealed.|Copy it and paste it elsewhere.|
-|#3|Quotes and sections look terrible. (this is because of a lack of padding)|None|
-|#4|Clipboard has poor support|Find the post on the website.|
+|[#1](https://github.com/XenithMusic/esixterm/issues/1)|Kitty images break when resizing the terminal.|`$ clear` or `[esixterm] clear`.|
+|[#2](https://github.com/XenithMusic/esixterm/issues/2)|In some terminals, spoilers cannot be revealed.|Copy it and paste it elsewhere.|
+|[#3](https://github.com/XenithMusic/esixterm/issues/3)|Quotes and sections look terrible. (this is because of a lack of padding)|None|
+|[#4](https://github.com/XenithMusic/esixterm/issues/4)|Clipboard has poor support|Find the post on the website.|
 
 ## Gallery
 
