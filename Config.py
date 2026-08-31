@@ -26,6 +26,9 @@ def getConfig(kind="conf.json"):
             raise TypeError("Expected config to be a JSON object (enclosed with curly braces), but it wasn't.")
         for k,v in jd.items():
             conf[k] = v
+        shouldSave = len([x for x in defaults[kind].keys() if not x in jd]) > 0
+        if shouldSave:
+            saveConfig(conf,kind=kind)
     return conf
 
 def saveConfig(conf,kind="conf.json"):

@@ -67,7 +67,7 @@ api.setApiAuth(conf["username"],conf["apiKey"])
 
 ap = argparse.ArgumentParser(prog="esixterm",description="An e621 viewer for the commandline.",add_help=False)
 
-allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w), 'favorite' (fave,f), 'blacklist' (bl, b)"
+allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w), 'favorite' (fave,f), 'blacklist' (bl, b), 'config' (cfg,cf)"
 lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
 allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
 allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
@@ -92,7 +92,9 @@ aliases = {
     "f":"favorite",
     "favorites":"favorite",
     "bl":"blacklist",
-    "b":"blacklist"
+    "b":"blacklist",
+    "cfg":"config",
+    "cf":"config"
 }
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"esixterm {cmdargs.command}",description="An e621 viewer for the commandline.")
@@ -147,6 +149,8 @@ match cmdargs.command:
         ap2.add_argument("what",help=f"One of {allowedCopies}")
     case "wiki":
         ap2.add_argument("search",help=f"What to search for in a wiki page")
+    case "config":
+        pass
     case _:
         ap.error(f"argument command should be one of {allowedCmds}, but command is: {cmdargs.command}!")
 
@@ -357,6 +361,8 @@ if cmdargs.command in ["last"]:
         args.id = last["post"]
 
 match cmdargs.command:
+    case "config":
+        subprocess.run(["nano",config.getConfPath("conf.json")])
     case "blacklist":
         if args.show:
             per = 30
