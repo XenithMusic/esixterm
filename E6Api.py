@@ -71,6 +71,8 @@ def fetchResource(target,type="images"):
     path = tempfile.gettempdir().rstrip("/") + f"/esixterm/{type}/"
     os.makedirs(path,exist_ok=True)
     path += element
+    if os.path.exists(path):
+        return path
     r = requests.get(target,
                  headers=dfhead)
     if r.status_code == 404:
