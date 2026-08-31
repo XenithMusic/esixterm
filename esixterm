@@ -3,6 +3,9 @@ if __name__ != "__main__":
     print("This is not intended to be imported as a library. Please run this from the commandline.")
 
 import argparse,term_image,term_image.image,term_image.utils,Clipboard
+import os
+import tempfile
+import time
 import datetime
 import math
 from Colors import *
@@ -12,6 +15,7 @@ import E6Api as api
 import DText
 import shlex
 import subprocess
+import TagMatches
 
 config.registerKey("username","",kind="conf.json")
 config.registerKey("apiKey","",kind="conf.json")
@@ -26,6 +30,36 @@ config.registerKey("querypage",1,kind="last.json")
 config.registerKey("querymaxpage",1,kind="last.json")
 config.registerKey("post",1,kind="last.json")
 last = config.getConfig(kind="last.json")
+config.registerKey("tags",[ # default blacklist
+    # health
+    "epilepsy_warning",
+    "sound_warning",
+    "trypophobia",
+    # disturbing
+    "gore",
+    "snuff",
+    "mutilation",
+    "body_horror",
+    "emaciated",
+    "morbidly_obese",
+    "slave",
+    "abduction",
+    # controversial and/or offensive
+    "politics",
+    "nazi",
+    "slur",
+    # performance and/or laggy (and may crash depending on the terminal)
+    "~huge_filesize ~superabsurd_res"
+],kind="blacklist.json")
+config.registerKey("default",True,kind="blacklist.json")
+config.registerKey("enabled",True,kind="blacklist.json")
+blacklist = config.getConfig(kind="blacklist.json")
+
+effectiveBlacklist = blacklist["tags"] if blacklist["enabled"] else []
+
+if blacklist["default"]:
+    printw("\n§101bud§ Warning! §91§\nA default blacklist is active. It is recommended that you view it, and edit it with the blacklist command.\n(This warning adds a delay before anything runs; view or edit the blacklist to remove it.)\n")
+    time.sleep(1.0)
 
 api.init(conf["threadedWorkers"])
 
@@ -33,7 +67,7 @@ api.setApiAuth(conf["username"],conf["apiKey"])
 
 ap = argparse.ArgumentParser(prog="esixterm",description="An e621 viewer for the commandline.",add_help=False)
 
-allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w), 'favorite' (fave,f)"
+allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w), 'favorite' (fave,f), 'blacklist' (bl, b)"
 lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
 allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
 allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
@@ -56,11 +90,17 @@ aliases = {
     "w":"wiki",
     "fave":"favorite",
     "f":"favorite",
-    "favorites":"favorite"
+    "favorites":"favorite",
+    "bl":"blacklist",
+    "b":"blacklist"
 }
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"esixterm {cmdargs.command}",description="An e621 viewer for the commandline.")
 match cmdargs.command:
+    case "blacklist":
+        ap2.add_argument("-r","--remove",default=False,help="Removes from your blacklist instead of adding.",action="store_true")
+        ap2.add_argument("-s","--show",default=False,help="Shows your favorites",action="store_true")
+        ap2.add_argument("-p","--page",help="The target page.",default=1,type=int)
     case "favorite":
         ap2.add_argument("type",help=f"One of {allowedFaves}")
         ap2.add_argument("which",nargs='?',help="'last', a numeric id, or a search query that will result in one of (type) only.")
@@ -162,6 +202,9 @@ def showFullView(id):
     if success == False:
         raise ConnectionError(response)
     post = response["post"]
+    blacklisted = TagMatches.matchAnyTagQualifier(post,effectiveBlacklist)
+    if blacklisted:
+        printw("§31b§The requested post is blacklisted! Toggle your blacklist off first.")
     path = api.fetchResource(post["file"]["url"])
     image = term_image.image.from_file(path)
     image.draw(h_align="center",v_align="top",pad_height=1)
@@ -231,10 +274,19 @@ def showListView(posts,statusString):
     downloads:dict[int,api.concurrent.futures.Future] = {
 
     }
-    for i,post in enumerate(posts):
+    permittedPosts = []
+    blacklistCt = 0
+    for post in posts:
+        blacklisted = TagMatches.matchAnyTagQualifier(post,effectiveBlacklist)
+        if blacklisted:
+            blacklistCt += 1
+            continue
+        permittedPosts.append(post)
+    if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt > 1 else ''} were blacklisted)")
+    for i,post in enumerate(permittedPosts):
         downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews")
         pass
-    for i,post in enumerate(posts):
+    for i,post in enumerate(permittedPosts):
         imgPath = downloads[i].result()
         if imgPath == None:
             print("\n"*10,end="")
@@ -305,6 +357,51 @@ if cmdargs.command in ["last"]:
         args.id = last["post"]
 
 match cmdargs.command:
+    case "blacklist":
+        if args.show:
+            per = 30
+            page = args.page
+            paginated = blacklist["tags"][(page-1)*per:page*per]
+            for item in paginated:
+                printw(("§31§" if item.startswith("!") else "§32§") + item + (" (disabled)" if item.startswith("!") else ""))
+            printw("§97s§" + " "*termCols)
+            printw(f"§b§Page §§{page} - §33b§Blacklist")
+        else:
+            fd,path = tempfile.mkstemp(prefix="esixterm-blacklist-")
+            data = """# --- start of blacklist! ---
+"""
+            data += "\n".join(blacklist["tags"])
+            data += """
+# --- end of blacklist! ---
+# modify the list above to change your blacklist!
+# use [CTRL]+[X] to exit nano.
+# if it prompts you to save your changes, press Y.
+# 
+# reference https://e621.net/wiki_pages/1008 for tips on how to use the blacklist
+# reference https://e621.net/wiki_pages/9169 for tagging tips; those rules apply here
+# 
+# be warned; a very very significant deviation from standard e621 tags applies
+# to the blacklist; description:"whatever with spaces" does not work, and 
+# "description:whatever with spaces" should be used instead.
+# 
+# formatting will not persist; comments are removed and newlines are stripped.
+# however, order WILl persist, so you may group relevant tags together.
+# 
+# place ! at the start of the line to mark a tag as disabled; it will be skipped."""
+            with open(path,"w") as f:
+                f.write(data)
+            os.close(fd)
+            try:
+                subprocess.run(["nano",path])
+                with open(path,"r") as f:
+                    data = f.read().split("\n")
+                data = [x.split("#")[0] for x in data if x]
+                data = [x for x in data if x.strip() != ""]
+                blacklist["tags"] = data
+            finally:
+                os.unlink(path)
+        blacklist["default"] = False
+        config.saveConfig(blacklist,"blacklist.json")
     case "favorite":
         method = list.append
         if args.unfavorite:
@@ -326,7 +423,7 @@ match cmdargs.command:
                     success,response = api.getPosts(paginated,per,1)
                     if not success:
                         raise ConnectionError(response)
-                    showListView(response["posts"],CString(f"§b§Page §§{page} - §b§Favorites"))
+                    showListView(response["posts"],CString(f"§b§Page §§{page} - §33b§Favorites"))
         else:
             match args.type:
                 case "tag":
