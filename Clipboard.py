@@ -3,6 +3,11 @@ from ColoredString import CString
 
 def copytext(text:str):
     match platform.system():
+        case "Darwin":
+            from AppKit import NSPasteBoard, NSPasteboardTypeString
+            pb = NSPasteBoard.generalPasteboard()
+            pb.clearContents()
+            pb.setString_forType_(text,NSPasteboardTypeString)
         case "Linux":
             match os.environ.get("XDG_SESSION_TYPE","none"):
                 case "wayland":
@@ -25,10 +30,9 @@ def copytext(text:str):
                     print(CString("§34§Cannot copy to clipboard when not in a X11 or wayland session!"))
                     return
         case _:
-            print(CString("§34§Cannot copy to clipboard on systems other than Linux!"))
+            print(CString("§34§Cannot copy to clipboard on Windows or Jython! (macOS support is untested)"))
 
-def copyfilenetwork(url:str):
-    print(f"copying from {url}")
+def copyfile(path:str):
     # ext = path.split(".")[-1]
     # if ext == "svg": ext = "svg+xml"
     # if ext == "ico": ext = "vnd.microsoft.icon"
@@ -36,7 +40,15 @@ def copyfilenetwork(url:str):
     # if ext == "tif": ext = "tiff"
     # mime = f"image/{ext}"
     match platform.system():
+        case "Darwin":
+            from AppKit import NSPasteboard
+            from Foundation import NSURL
+            pb = NSPasteboard.generalPasteboard()
+            pb.clearContents()
+            url = NSURL.fileURLWithPath_(path)
+            pb.writeObjects_([url])
         case "Linux":
+            url = "file://" + path
             match os.environ.get("XDG_SESSION_TYPE","none"):
                 case "wayland":
                     proc = subprocess.Popen(
@@ -58,7 +70,4 @@ def copyfilenetwork(url:str):
                     print(CString("§34§Cannot copy to clipboard when not in a X11 or wayland session!"))
                     return
         case _:
-            print(CString("§34§Cannot copy to clipboard on systems other than Linux!"))
-
-def copyfile(path:str):
-    copyfilenetwork("file://" + path)
+            print(CString("§34§Cannot copy to clipboard on Windows or Jython! (macOS support is untested)"))

@@ -1,11 +1,21 @@
 # esixterm
 An e621 viewer for the terminal.
 
+## Platform Support
+
+|Platform|Status|
+|-|-|
+|Windows|Untested. (planned)|
+|MacOS|Untested, but supported.|
+|Linux|Supported|
+
 ## Dependencies
 You may install the python dependencies needed through the following methods:
 - pacman: `pacman -S python-platformdirs python-requests python-webcolors`
 - pip (automatic): `pip install -r requirements.txt`
 - pip (manual): `pip install platformdirs requests webcolors`
+
+If you're on MacOS, you will also need `pyobjc`.
 
 ## Installation
 Git clone this repository, or download the source code folder from a release.
