@@ -4,10 +4,18 @@ import consts
 import tempfile
 import os
 import base64
+import concurrent,concurrent.futures
+
+executor = None
 
 dfhead = {"User-Agent":f"{consts.app.id}/{consts.app.version} (by {consts.author.e621} on e621)"}
 
 auth = None
+
+def init(threadedWorkers=8):
+    global executor
+    if executor: executor.shutdown(True)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=threadedWorkers)
 
 def setApiAuth(user,api):
     global auth,dfhead
@@ -52,6 +60,9 @@ def apiReq(endpoint,params,service="https://e621.net",method="GET"):
         return False,errs[r.status_code]
     else:
         return True,r.json()
+
+def fetchResourceAsync(target) -> concurrent.futures.Future:
+    return executor.submit(fetchResource,target)
 
 def fetchResource(target):
     if target == None:

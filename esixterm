@@ -15,6 +15,7 @@ import subprocess
 
 config.registerKey("username","",kind="conf.json")
 config.registerKey("apiKey","",kind="conf.json")
+config.registerKey("threadedWorkers",8,kind="conf.json")
 conf = config.getConfig(kind="conf.json")
 config.registerKey("tags",[],kind="faves.json")
 config.registerKey("posts",[],kind="faves.json")
@@ -26,6 +27,8 @@ config.registerKey("querypage",1,kind="last.json")
 config.registerKey("querymaxpage",1,kind="last.json")
 config.registerKey("post",1,kind="last.json")
 last = config.getConfig(kind="last.json")
+
+api.init(conf["threadedWorkers"])
 
 api.setApiAuth(conf["username"],conf["apiKey"])
 
@@ -228,6 +231,7 @@ if cmdargs.command in ["last"]:
         cmdargs.command = "search"
         args.tags = last["query"].split(" ")
         args.page = args.page
+        args.limit = 10
         if args.page == None: args.page = last["querypage"]
     elif args.type == "post":
         cmdargs.command = "id"
@@ -289,8 +293,14 @@ match cmdargs.command:
         #     image.width = math.floor(termCols*0.5)
         printw(CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
         printw("§90s§" + " "*termCols)
+        downloads:dict[int,api.concurrent.futures.Future] = {
+
+        }
         for i,post in enumerate(posts):
-            imgPath = api.fetchResource(post["preview"]["url"])
+            downloads[i] = api.fetchResourceAsync(post["preview"]["url"])
+            pass
+        for i,post in enumerate(posts):
+            imgPath = downloads[i].result()
             if imgPath == None:
                 print("\n"*10,end="")
                 wrapLen = termCols
