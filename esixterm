@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+if __name__ != "__main__":
+    print("This is not intended to be imported as a library. Please run this from the commandline.")
+
+import argparse,term_image,term_image.image,term_image.utils,Clipboard
+import datetime
+import math
+from Colors import *
+from TermUtils import *
+import Config as config
+import E6Api as api
+import DText
+import shlex
+import subprocess
+
+config.registerKey("username","",kind="conf.json")
+config.registerKey("apiKey","",kind="conf.json")
+conf = config.getConfig(kind="conf.json")
+config.registerKey("tags",[],kind="faves.json")
+config.registerKey("posts",[],kind="faves.json")
+config.registerKey("pools",[],kind="faves.json")
+faves = config.getConfig(kind="faves.json")
+config.registerKey("results",{},kind="last.json")
+config.registerKey("query","",kind="last.json")
+config.registerKey("querypage",1,kind="last.json")
+config.registerKey("querymaxpage",1,kind="last.json")
+config.registerKey("post",1,kind="last.json")
+last = config.getConfig(kind="last.json")
+
+api.setApiAuth(conf["username"],conf["apiKey"])
+
+ap = argparse.ArgumentParser(prog="esixterm",description="An e621 viewer for the commandline.",add_help=False)
+
+allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w)"
+lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
+allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
+allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
+
+ap.add_argument("command",nargs="?",help=f"The command to perform. One of {allowedCmds}",default="persist")
+cmdargs,remaining = ap.parse_known_args()
+aliases = {
+    "s":"search",
+    "v":"view",
+    "#":"id",
+    "pg":"page",
+    "p":"page",
+    "h":"help",
+    "?":"help",
+    "l":"last",
+    "<":"last",
+    "cp":"copy",
+    "c":"copy",
+    "w":"wiki"
+}
+if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
+ap2 = argparse.ArgumentParser(prog=f"esixterm {cmdargs.command}",description="An e621 viewer for the commandline.")
+match cmdargs.command:
+    case "persist":
+        hist = []
+        while True:
+            cmd = inputc(CString("§35§[esixterm]§§ "),hist)
+            hist.append(cmd)
+            try:
+                split = shlex.split(cmd)
+            except ValueError as e:
+                print("bad command;"," ".join(e.args).lower())
+                continue
+            if len(split) == 0: continue
+            # persistent exclusive
+            match split[0]:
+                case "exit":
+                    exit(0)
+                    continue
+                case "clear":
+                    clear()
+                    continue
+            subprocess.run([__file__] + split)
+    case "search":
+        ap2.add_argument("tags",nargs='*',help="The tags to search for.")
+        ap2.add_argument("-p","--page",help="The target page.",default=1,type=int)
+        ap2.add_argument("-l","--limit",help="Number of posts to show",default=10,type=int)
+    case "help":
+        ap.print_help()
+        exit()
+    case "id":
+        ap2.add_argument("id",help="ID of the post to show.")
+    case "view":
+        ap2.add_argument("idx",help="Index from the last search to show.")
+    case "last":
+        ap2.add_argument("type",help=f"One of {lastAllowedTypes}")
+        ap2.add_argument("-p","--page",help="Target page for 'search' type.",default=None,type=int)
+    case "page":
+        ap2.add_argument("direction",help=f"One of {allowedPageDirs}")
+    case "copy":
+        ap2.add_argument("what",help=f"One of {allowedCopies}")
+    case "wiki":
+        ap2.add_argument("search",help=f"What to search for in a wiki page")
+    case _:
+        ap.error(f"argument command should be one of {allowedCmds}, but command is: {cmdargs.command}!")
+
+termCols = term_image.utils.get_terminal_size().columns
+
+args = ap2.parse_args(remaining)
+
+aliases = {
+    "last":{
+        "type":{
+            "s":"search",
+            "p":"post",
+            "query":"search",
+            "q":"search"
+        }
+    },
+    "page":{
+        "direction":{
+            "f":"fore",
+            "b":"back",
+            "n":"next",
+            "p":"previous",
+            "last":"back",
+            "l":"back",
+            ".":"next",
+            ",":"previous"
+        }
+    },
+    "copy":{
+        "what":{
+            "i":"img",
+            "il":"imglink",
+            "p":"post",
+            "pl":"post",
+            "postlink":"post",
+            "share":"post"
+        }
+    }
+}
+if cmdargs.command in aliases:
+    for key,a in aliases[cmdargs.command].items():
+        if getattr(args,key) in a:
+            setattr(args,key,a[getattr(args,key)])
+
+def showFullView(id):
+    last["post"] = id
+    success,response = api.getPost(id)
+    if success == False:
+        raise ConnectionError(response)
+    post = response["post"]
+    path = api.fetchResource(post["file"]["url"])
+    image = term_image.image.from_file(path)
+    image.draw(h_align="center",v_align="top",pad_height=1)
+    print("")
+    movedLeft = 0
+    movedRight = 0
+    leftsize = math.floor(termCols/2)
+    rightsize = math.ceil(termCols/2)
+    firstRow = [CString("§0b§Attribution:")]
+    for tag in post["tags"]["artist"]: firstRow.append(tagArtist(tag))
+    for tag in post["tags"]["copyright"]: firstRow.append(tagCopyright(tag))
+    for tag in post["tags"]["contributor"]: firstRow.append(tagContributor(tag))
+    secondRow = [CString("§0b§Subjects:")]
+    for tag in post["tags"]["character"]: secondRow.append(tagCharacter(tag))
+    for tag in post["tags"]["species"]: secondRow.append(tagSpecies(tag))
+    thirdRow = [CString("§0b§Details:")]
+    for tag in post["tags"]["general"]: thirdRow.append(tagGeneral(tag))
+    for tag in post["tags"]["lore"]: thirdRow.append(tagLore(tag))
+    fourthRow = [CString("§0b§Meta:")]
+    for tag in post["tags"]["meta"]: fourthRow.append(tagMeta(tag))
+    for tag in post["tags"]["invalid"]: fourthRow.append(tagInvalid(tag))
+    movedLeft = printw(CString(" ").join(firstRow),wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(CString(" ").join(secondRow),wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(CString(" ").join(thirdRow),wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(CString(" ").join(fourthRow),wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw("",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§ID:       §§{post["id"]}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§MD5:      §§{post["file"]["md5"]}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Size:     §§{post["file"]["width"]}x{post["file"]["height"]} ({math.floor(post["file"]["size"]/1024)} KiB)",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Type:     §§{post["file"]["ext"].upper()}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw("",wrapLen=leftsize,movedLines=movedLeft)
+
+    movedLeft = printw(f"§b§Rating:   {colorRating(post["rating"])}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Score:    {post["score"]["total"]} (§32§+{post["score"]["up"]} §31§{post["score"]["down"]}§§)",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Faves:    {post["fav_count"]}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw("",wrapLen=leftsize,movedLines=movedLeft)
+    postedTimestamp = datetime.datetime.fromisoformat(post["created_at"])
+    since:datetime.timedelta = datetime.datetime.now(datetime.timezone.utc)-postedTimestamp
+    postText = "less than a minute ago"
+    if since.days >= 365:
+        postText = f"{math.floor(since.days/365)} years ago"
+    elif since.days >= 365/12:
+        postText = f"{math.floor(since.days/365*12)} months ago"
+    elif since.days >= 1:
+        postText = f"{since.days} days ago"
+    elif since.total_seconds() >= 60*60:
+        postText = f"{math.floor(since.total_seconds()/60/60)} hours ago"
+    elif since.total_seconds() >= 60:
+        postText = f"{math.floor(since.total_seconds()/60)} minutes ago"
+    movedLeft = printw(f"§b§Posted:   §§{postText}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Uploader: §§{post["uploader_name"]}",wrapLen=leftsize,movedLines=movedLeft)
+    movup(movedLeft)
+    curx(leftsize+1)
+    desc = DText.renderDText(post["description"])
+    desc.split("\n")
+    desc = CString(desc).wrap(rightsize)
+    for i in desc:
+        movedRight = prints(i,movedLines=movedRight)
+        curx(leftsize+1)
+    movup(movedRight)
+    movdown(max(movedLeft,movedRight))
+    curx(0)
+
+if cmdargs.command == "page":
+    cmdargs.command = "last"
+    args.type = "search"
+    args.page = None
+    if args.direction in ["fore","next"]:
+        last["querypage"] = last["querypage"] + 1
+    elif args.direction in ["back","previous"]:
+        last["querypage"] = max(last["querypage"] - 1,1)
+    elif args.direction in ["first"]:
+        last["querypage"] = 1
+    elif args.direction.isdigit():
+        last["querypage"] = int(args.direction)
+    else:
+        ap.error(f"argument direction should be one of {allowedPageDirs}, but direction is: {args.direction}")
+
+if cmdargs.command in ["last"]:
+    if args.type == "search":
+        cmdargs.command = "search"
+        args.tags = last["query"].split(" ")
+        args.page = args.page
+        if args.page == None: args.page = last["querypage"]
+    elif args.type == "post":
+        cmdargs.command = "id"
+        args.id = last["post"]
+
+match cmdargs.command:
+    case "wiki":
+        success,wikis = api.searchWiki(args.search,limit=10)
+        if success == False:
+            raise ConnectionError(wikis)
+        if len(wikis) == 1:
+            wiki = wikis[0]
+            link = f"https://e621.net/wiki_pages/{wiki['id']}"
+            printw(f"§b§Title: §31i|{link}§[[{wiki["title"]}]]",wrapLen=termCols)
+            printw(f"§b§Parent: {wiki["parent"]}",wrapLen=termCols)
+            printw(f"§b§Created by: {wiki["creator_name"]}",wrapLen=termCols)
+            printw(f"")
+            printw(DText.renderDText(wiki["body"]))
+            printw(f"\n§b§Featured posts:§§")
+            printw(", ".join([str(x) for x in wiki["featured_posts"]]))
+        else:
+            printw(f"§b§{len(wikis)} result{'s' if len(wikis) != 1 else ''}",wrapLen=termCols)
+            printw("")
+            print(wikis)
+            for wiki in wikis:
+                printw(f"(id: {wiki['id']}) §b§{wiki['title']}",wrapLen=termCols)
+    case "copy":
+        if args.what == "post":
+            link = f"https://e621.net/posts/{last["post"]}?q={last["query"].replace(" ","+")}"
+            Clipboard.copytext(link)
+        else:
+            success,response = api.getPost(last["post"])
+            if success == False:
+                raise ConnectionError(response)
+            post = response["post"]
+            if args.what in ["img","image"]:
+                path = api.fetchResource(post["file"]["url"])
+                Clipboard.copyfile(path)
+            elif args.what in ["imglink","imagelink"]:
+                Clipboard.copytext(post["file"]["url"])
+    case "view":
+        showFullView(last["results"][str(args.idx)])
+    case "id":
+        showFullView(args.id)
+    case "search":
+        last["query"] = " ".join(args.tags)
+        last["querypage"] = args.page
+        success,response = api.search(args.tags,page=args.page,limit=args.limit)
+        if success == False:
+            raise ConnectionError(response)
+        else:
+            # print(" ".join(args.tags))
+            # print(response)
+            posts = response["posts"]
+        last["results"] = {(i+1):x["id"] for i,x in enumerate(posts)}
+
+        # image = term_image.image.from_file("demopreview.png",height=10)
+        # if image.width/termCols >= 0.5:
+        #     image.width = math.floor(termCols*0.5)
+        printw(CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
+        printw("§90s§" + " "*termCols)
+        for i,post in enumerate(posts):
+            imgPath = api.fetchResource(post["preview"]["url"])
+            if imgPath == None:
+                print("\n"*10,end="")
+                wrapLen = termCols
+            else:
+                postPreview = term_image.image.from_file(imgPath,height=10)
+                if postPreview.width/termCols >= 0.5:
+                    postPreview.width = math.floor(termCols*0.5)
+                postPreview.draw(h_align="right",v_align="top",pad_height=1)
+                wrapLen = termCols-postPreview.width
+            savecur()
+            movup(10)
+            movedLines = 0
+            firstRow = [CString("§0b§Attribution:")]
+            for tag in post["tags"]["artist"]: firstRow.append(tagArtist(tag))
+            for tag in post["tags"]["copyright"]: firstRow.append(tagCopyright(tag))
+            for tag in post["tags"]["contributor"]: firstRow.append(tagContributor(tag))
+            secondRow = [CString("§0b§Subjects:")]
+            for tag in post["tags"]["character"]: secondRow.append(tagCharacter(tag))
+            for tag in post["tags"]["species"]: secondRow.append(tagSpecies(tag))
+            thirdRow = [CString("§0b§Details:")]
+            for tag in post["tags"]["general"]: thirdRow.append(tagGeneral(tag))
+            for tag in post["tags"]["lore"]: thirdRow.append(tagLore(tag))
+            fourthRow = [CString("§0b§Meta:")]
+            for tag in post["tags"]["meta"]: fourthRow.append(tagMeta(tag))
+            for tag in post["tags"]["invalid"]: fourthRow.append(tagInvalid(tag))
+            movedLines = printw(CString(f"§b§Description: §§\n{DText.renderDText(post["description"].rstrip("\n"))}\n"),movedLines=movedLines)
+            printw(CString(f"(§b§Idx: §§{i+1})".rjust(wrapLen)))
+            movup(1)
+            movedLines = printw(CString(f"§b§Id: §§{post["id"]}"),wrapLen=wrapLen,movedLines=movedLines)
+            if len(firstRow) > 1: movedLines = printw(CString(" ").join(firstRow),wrapLen=wrapLen,movedLines=movedLines)
+            if len(secondRow) > 1: movedLines = printw(CString(" ").join(secondRow),wrapLen=wrapLen,movedLines=movedLines)
+            if len(thirdRow) > 1: movedLines = printw(CString(" ").join(thirdRow),wrapLen=wrapLen,movedLines=movedLines)
+            if len(fourthRow) > 1: movedLines = printw(CString(" ").join(fourthRow),wrapLen=wrapLen,movedLines=movedLines)
+            movedLines = prints("",movedLines=movedLines)
+            movedLines = printw(f"§b§Rating: {colorRating(post["rating"])}",wrapLen=wrapLen,movedLines=movedLines)
+            # print(CString(" ").join([tagGeneral("general"),tagArtist("artist"),tagContributor("contributor"),tagCopyright("copyright"),tagCharacter("character"),tagSpecies("species"),tagInvalid("invalid"),tagMeta("meta"),tagLore("lore")]))
+            # printw(CString.from_flike('{tagGeneral("general")} {tagArtist("artist")} {tagContributor("contributor")} {tagCopyright("copyright")} {tagCharacter("character")} {tagSpecies("species")} {tagInvalid("invalid")} {tagMeta("meta")} {tagLore("lore")}'),wrapLen=wrapLen)
+            while movedLines < 10:
+                movedLines = prints(f"",movedLines=movedLines)
+            movedLines = printw("§90s§" + " "*termCols,movedLines=movedLines)
+        printw(CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
+                
+
+config.saveConfig(last,"last.json")
