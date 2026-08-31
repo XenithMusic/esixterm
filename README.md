@@ -8,11 +8,13 @@ You may install the python dependencies needed through the following methods:
 - pip (manual): `pip install platformdirs requests webcolors`
 
 ## Installation
-Copy or symlink this folder to `~/.local/lib/esixterm`.
+Git clone this repository, or download the source code folder from a release.
 
-Symlink the python script `esixterm` in this folder to `~/.local/bin/esixterm`. Make sure it is marked as executable.
+Move copy or symlink the repository to `~/.local/lib/esixterm`.
 
-`~/.local/bin` may not be on `PATH` already; if it isn't, you should add it.
+Symlink the python script `esixterm` in the repository to `~/.local/bin/esixterm`. Make sure it is marked as executable.
+
+Ensure `~/.local/bin` is on PATH.
 
 ## Configuring
 Config files are automatically generated in `~/.config/esixterm`. The most relevant one being `conf.json`, which holds auth information such as `username` and `apiKey`.
