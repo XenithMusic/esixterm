@@ -59,23 +59,23 @@ class TestTagMatches(unittest.TestCase):
     def test_widthrange4(self):
         self.tagCheck(False,["width:>=1000"],lambda x : x["file"]["width"] >= 1000,True)
     def test_heightrange1(self):
-        self.tagCheck(True,["height:<=250"],lambda x : x["file"]["height"] <= 250,True)
+        self.tagCheck(False,["height:<=250"],lambda x : x["file"]["height"] <= 250,True)
     def test_heightrange2(self):
-        self.tagCheck(True,["height:<=500"],lambda x : x["file"]["height"] <= 500,True)
+        self.tagCheck(False,["height:<=500"],lambda x : x["file"]["height"] <= 500,True)
     def test_heightrange3(self):
-        self.tagCheck(True,["height:<=750"],lambda x : x["file"]["height"] <= 750,True)
+        self.tagCheck(False,["height:<=750"],lambda x : x["file"]["height"] <= 750,True)
     def test_heightrange4(self):
-        self.tagCheck(True,["height:<=1000"],lambda x : x["file"]["height"] <= 1000,True,customDebugPrint=lambda x : x["file"]["height"])
+        self.tagCheck(False,["height:<=1000"],lambda x : x["file"]["height"] <= 1000,True,customDebugPrint=lambda x : x["file"]["height"])
     def test_heightrange4(self):
-        self.tagCheck(True,["height:<=1000"],lambda x : x["file"]["height"] <= 1000,True,customDebugPrint=lambda x : x["file"]["height"])
+        self.tagCheck(False,["height:<=1000"],lambda x : x["file"]["height"] <= 1000,True,customDebugPrint=lambda x : x["file"]["height"])
     def test_hasparent(self):
-        self.tagCheck(True,["hasparent:yes"],lambda x : x["relationships"]["parent_id"] != 0,True,customDebugPrint=lambda x : x["file"]["height"])
+        self.tagCheck(False,["hasparent:yes"],lambda x : x["relationships"]["parent_id"] != 0,True,customDebugPrint=lambda x : x["file"]["height"])
     def test_ischild(self):
-        self.tagCheck(True,["ischild:true"],lambda x : x["relationships"]["parent_id"] != 0,True,customDebugPrint=lambda x : x["file"]["height"])
+        self.tagCheck(False,["ischild:true"],lambda x : x["relationships"]["parent_id"] != 0,True,customDebugPrint=lambda x : x["file"]["height"])
     def test_isparent(self):
-        self.tagCheck(True,["isparent:true"],lambda x : x["relationships"]["has_children"],True,customDebugPrint=lambda x : x["file"]["height"])
+        self.tagCheck(False,["isparent:true"],lambda x : x["relationships"]["has_children"],True,customDebugPrint=lambda x : x["file"]["height"])
     def test_haschild(self):
-        self.tagCheck(True,["haschild:true"],lambda x : x["relationships"]["has_children"],True,customDebugPrint=lambda x : x["file"]["height"])
+        self.tagCheck(False,["haschild:true"],lambda x : x["relationships"]["has_children"],True,customDebugPrint=lambda x : x["file"]["height"])
 
 
 class TestDText(unittest.TestCase):
