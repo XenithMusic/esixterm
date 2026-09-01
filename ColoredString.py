@@ -1,4 +1,4 @@
-import re
+import re,wcwidth
 
 class CChar:
     def __init__(self,chr:str,col:str|int,bold:bool=False,italic:bool=False,strike:bool=False,under:bool=False,dark:bool=False,hyperlink:str=""):
@@ -11,6 +11,9 @@ class CChar:
         self.under = under
         self.dark = dark
         self.hyperlink = hyperlink
+    def __len__(self):
+        wid = wcwidth.wcwidth(self.chr)
+        return 2 if wid < 0 else wid
     def getAnsi(self) -> str:
         ansis = [0]
         if self.chr != "" or self.col != 0:
@@ -143,7 +146,7 @@ class CString:
     def copy(self):
         return CString.from_chrs(self.chrs)
     def __len__(self):
-        return self.chrs.__len__()
+        return sum(len(x) for x in self.chrs)
     def __add__(self, other): # self + other
         if isinstance(other,str):
             other = CString(other)
@@ -154,23 +157,30 @@ class CString:
         return other + self
     def __repr__(self):
         return self.parse()
+    def findSlicePosition(self,pos):
+        sliced = self[:pos]
+        while len(sliced) > pos:
+            sliced = sliced[:-1]
+        return len(sliced.chrs)
     def wrap(self,wrapLen=99999):
         text = self.copy()
         lines = []
         hasElipsis = False
         while len(text) >= 1:
             elstr = "…" if hasElipsis else ""
+            text = elstr + text
             hasElipsis = False
-            s:CString = text[:wrapLen]
+            slicepos = text.findSlicePosition(wrapLen)
+            s:CString = text[:slicepos]
             if len(text) <= wrapLen:
                 lines += [s]
                 break
             if s.count(" ") == 0:
-                lines += [elstr + text[:(wrapLen-1)] + "…"]
-                text = text[(wrapLen-1):]
+                lines += [text[:(slicepos-1)] + "…"]
+                text = text[(slicepos-1):]
                 hasElipsis = True
             else:
                 idx = s.last(" ")
-                lines += [elstr + text[:(idx)]]
+                lines += [text[:(idx)]]
                 text = text[(idx+1):]
         return lines

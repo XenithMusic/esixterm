@@ -103,5 +103,8 @@ class TestColoredString(unittest.TestCase):
         printw(CString("§b§b§i§i§s§s§u§u§bis§`[u]bisu[/u]`"),"from [b]b[/b][i]i[/i][s]s[/s][u]u[/u][b][i][s]`[u]bisu[/u]`[/s][/i][/b]")
         printw(CString("§31§test"),"from [color=red]test[/color]")
         printw(CString("§31§test§32§test§31§test"),"from [color=red]test[color=lime]test[/color]test[/color]")
+        printw("testing one two three four five six pneumonoultramicroscopicsilicovolcanoconiosis",wrapLen=10)
+        printw("8/17付デイリーランキング20位、8/17～8/23付ウィークリーランキング19位でした！閲覧＆評価＆ブクマ、ありがとうございます！",wrapLen=10)
+        print("1234567890123456789012345678901234567890")
 if __name__ == "__main__":
     unittest.main()
