@@ -353,7 +353,7 @@ if cmdargs.command == "page":
     else:
         ap.error(f"argument direction should be one of {allowedPageDirs}, but direction is: {args.direction}")
 
-if cmdargs.command in ["last"]:
+if cmdargs.command == "last":
     if args.type == "search":
         cmdargs.command = "search"
         args.tags = last["query"].split(" ")
