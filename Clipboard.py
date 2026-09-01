@@ -4,7 +4,7 @@ from ColoredString import CString
 def copytext(text:str):
     match platform.system():
         case "Darwin":
-            from AppKit import NSPasteBoard, NSPasteboardTypeString
+            from AppKit import NSPasteBoard, NSPasteboardTypeString # type: ignore
             pb = NSPasteBoard.generalPasteboard()
             pb.clearContents()
             pb.setString_forType_(text,NSPasteboardTypeString)
@@ -41,8 +41,8 @@ def copyfile(path:str):
     # mime = f"image/{ext}"
     match platform.system():
         case "Darwin":
-            from AppKit import NSPasteboard
-            from Foundation import NSURL
+            from AppKit import NSPasteboard # type: ignore
+            from Foundation import NSURL # type: ignore
             pb = NSPasteboard.generalPasteboard()
             pb.clearContents()
             url = NSURL.fileURLWithPath_(path)

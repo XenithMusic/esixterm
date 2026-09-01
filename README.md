@@ -6,18 +6,40 @@ An e621 viewer for the terminal.
 |Platform|Status|
 |-|-|
 |Windows|Untested. (planned)|
-|MacOS|Untested, but supported.|
+|MacOS|Supported|
 |Linux|Supported|
 
 ## Dependencies
 You may install the python dependencies needed through the following methods:
 - pacman: `pacman -S python-platformdirs python-requests python-webcolors`
 - pip (automatic): `pip install -r requirements.txt`
-- pip (manual): `pip install platformdirs requests webcolors`
+- pip (manual): `pip install platformdirs requests webcolors term-image`
 
-If you're on MacOS, you will also need `pyobjc`.
+### MacOS
+
+- pip (automatic): `pip install -r requirements-macos.txt`
+- pip (manual): `platformdirs requests webcolors term-image pyobjc`
+
+You may encounter a `RequiredDependencyException: jpeg` while installing term-image. This is from PIL. If this occurs, you may need to install libjpeg with `brew install jpeg`.
+
+If the error does not resolve, you may have to set `LDFLAGS` and `CPPFLAGS` as follows before installing dependencies:
+```bash
+export LDFLAGS="-L$(brew --prefix libjpeg)/lib"
+export CPPFLAGS="-I$(brew --prefix libjpeg)/include"
+```
 
 ## Installation
+
+### PKGBUILD
+
+A PKGBUILD is available in `packaging/arch`. In order to install using that, cd into that directory, then run the following:
+```bash
+updpkgsums
+makepkg
+```
+Then install the resultant package (`esixterm-....pkg.tar.zst`) with `pacman -U`
+
+### Source
 Git clone this repository, or download the source code folder from a release.
 
 Move copy or symlink the repository to `~/.local/lib/esixterm`.
