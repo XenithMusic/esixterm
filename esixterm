@@ -74,7 +74,10 @@ allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlin
 allowedFaves = "'post', 'tag'"
 
 ap.add_argument("command",nargs="?",help=f"The command to perform. One of {allowedCmds}",default="persist")
+ap.add_argument("-s","--showall",help="Disables the blacklist for this query.",action="store_true")
 cmdargs,remaining = ap.parse_known_args()
+if cmdargs.showall:
+    effectiveBlacklist = []
 aliases = {
     "s":"search",
     "v":"view",
@@ -290,7 +293,7 @@ def showListView(posts,statusString):
             blacklistCt += 1
             continue
         permittedPosts.append(post)
-    if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt > 1 else ''} were blacklisted)")
+    if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt != 1 else ''} were blacklisted)")
     for i,post in enumerate(permittedPosts):
         downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews")
         pass
@@ -321,7 +324,7 @@ def showListView(posts,statusString):
         fourthRow = [CString("§0b§Meta:")]
         for tag in post["tags"]["meta"]: fourthRow.append(tagMeta(tag))
         for tag in post["tags"]["invalid"]: fourthRow.append(tagInvalid(tag))
-        movedLines = printw(CString(f"§b§Description: §§\n{DText.renderDText(post["description"].rstrip("\n"))}\n"),movedLines=movedLines)
+        movedLines = printw(CString(f"§b§Description: §§\n{DText.renderDText(post["description"].rstrip("\n"))}\n"),wrapLen=wrapLen,movedLines=movedLines)
         printw(CString(f"(§b§Idx: §§{i+1})".rjust(wrapLen)))
         movup(1)
         movedLines = printw(CString(f"§b§Id: §§{post["id"]}"),wrapLen=wrapLen,movedLines=movedLines)
@@ -331,12 +334,16 @@ def showListView(posts,statusString):
         if len(fourthRow) > 1: movedLines = printw(CString(" ").join(fourthRow),wrapLen=wrapLen,movedLines=movedLines)
         movedLines = prints("",movedLines=movedLines)
         movedLines = printw(f"§b§Rating: {colorRating(post["rating"])}",wrapLen=wrapLen,movedLines=movedLines)
+        if TagMatches.matchAnyTagQualifier(post,blacklist["tags"]):
+            movedLines = printw(f"",movedLines=movedLines)
+            movedLines = printw("§41d§This post would've been blacklisted!§§",movedLines=movedLines)
         # print(CString(" ").join([tagGeneral("general"),tagArtist("artist"),tagContributor("contributor"),tagCopyright("copyright"),tagCharacter("character"),tagSpecies("species"),tagInvalid("invalid"),tagMeta("meta"),tagLore("lore")]))
         # printw(CString.from_flike('{tagGeneral("general")} {tagArtist("artist")} {tagContributor("contributor")} {tagCopyright("copyright")} {tagCharacter("character")} {tagSpecies("species")} {tagInvalid("invalid")} {tagMeta("meta")} {tagLore("lore")}'),wrapLen=wrapLen)
         while movedLines < 10:
             movedLines = prints(f"",movedLines=movedLines)
         movedLines = printw("§90s§" + " "*termCols,movedLines=movedLines)
     printw(statusString)
+    if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt > 1 else ''} were blacklisted)")
 
 if cmdargs.command == "page":
     cmdargs.command = "last"

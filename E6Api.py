@@ -124,7 +124,7 @@ def fetchResource(target,type="images"):
     if os.path.exists(path):
         return path
     r = requests.get(target,
-                 headers=dfhead)
+                headers=dfhead)
     if r.status_code == 404:
         return None
     r.raise_for_status()

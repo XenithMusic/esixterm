@@ -146,7 +146,6 @@ def matchTags(post:dict,match:list[str],whenEmpty=True) -> bool:
     tags = getAllTags(post)
     negationTags = [x.replace("-","~") for x in match if x.startswith("-")]
     if matchTags(post,negationTags,whenEmpty=False):
-        print("matched negation")
         return False
     match = [x for x in match if not x.startswith("-")]
     anyMatched = False
