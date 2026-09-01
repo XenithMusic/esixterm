@@ -2,6 +2,14 @@ import platform,subprocess,os
 from ColoredString import CString
 
 def copytext(text:str):
+    """
+    Copies a string to the clipboard. Does not work on Linux or with Jython.
+
+    Args:
+        text:str    The text to copy
+    
+    No return
+    """
     match platform.system():
         case "Darwin":
             from AppKit import NSPasteBoard, NSPasteboardTypeString # type: ignore
@@ -33,6 +41,14 @@ def copytext(text:str):
             print(CString("§34§Cannot copy to clipboard on Windows or Jython! (macOS support is untested)"))
 
 def copyfile(path:str):
+    """
+    Copies a file to the clipboard. Does not work on Linux or with Jython.
+
+    Args:
+        path:str    The path to the file to copy
+    
+    No return
+    """
     # ext = path.split(".")[-1]
     # if ext == "svg": ext = "svg+xml"
     # if ext == "ico": ext = "vnd.microsoft.icon"

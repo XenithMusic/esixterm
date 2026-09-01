@@ -16,6 +16,15 @@ def rgbToNearWebcolorName(rgb1):
     return closest
 
 def renderDText(dtext:str) -> str:
+    """
+    Converts DText to a string representing a CString.
+    
+    Args:
+        dtext:str   The DText to convert.
+    
+    Returns:
+        A str representation of a CString.
+    """
     dtext = dtext.replace("[[","[wikilink]&lsqb;&lsqb;")
     dtext = dtext.replace("]]","&rsqb;&rsqb;[/wikilink]")
     depth = {

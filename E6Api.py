@@ -13,18 +13,47 @@ dfhead = {"User-Agent":f"{consts.app.id}/{consts.app.version} (by {consts.author
 auth = None
 
 def init(threadedWorkers=8):
+    """
+    Initializes the api.
+
+    Args:
+        threadedWorkers:int     How many workers to allocate for downloads. (default: 8)
+    """
     global executor
     if executor: executor.shutdown(True)
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=threadedWorkers)
 
 def setApiAuth(user,api):
+    """
+    Sets authorization.
+    
+    Args:
+        user:str        The username to authenticate as.
+        api:str         The API key to use to authenticate.
+    
+    Returns:
+        success:bool    Whether or not it set the authorization.
+    """
     global auth,dfhead
     if user == "" or api == "": return False
     dfhead["Authorization"] = "Basic " + base64.b64encode(f"{user}:{api}".encode()).decode()
     auth = requests.auth.HTTPBasicAuth(user,api)
     return True
 
-def apiReq(endpoint,params,service="https://e621.net",method="GET"):
+def apiReq(endpoint:str,params:dict,service="https://e621.net",method="GET") -> tuple[bool,str|dict]:
+    """
+    Makes an arbitrary api request.
+
+    Args:
+        endpoint:str    The endpoint to request.
+        params:dict     The parameters to pass.
+        service:str     The service to send the request to.
+        method:str      The method to use. (one of 'GET','POST','PUT','PATCH','DELETE')
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
     if service == None:
         service = "https://e621.net"
     r = requests.request(
@@ -62,9 +91,30 @@ def apiReq(endpoint,params,service="https://e621.net",method="GET"):
         return True,r.json()
 
 def fetchResourceAsync(target,type="images") -> concurrent.futures.Future:
+    """
+    Retrieves a file from a URL.
+
+    Args:
+        target:str                  The URL to the resource to retrieve.
+        type:str                    The sub-directory to put the resultant resource in.
+    
+    Returns:
+        future:Future               A future representing the call.
+            future.result():str     A path to the file.
+    """
     return executor.submit(fetchResource,target,type)
 
 def fetchResource(target,type="images"):
+    """
+    Retrieves a file from a URL.
+
+    Args:
+        target:str      The URL to the resource to retrieve.
+        type:str        The sub-directory to put the resultant resource in.
+    
+    Returns:
+        path:str        The resultant path of the file.
+    """
     if target == None:
         return None
     element = target.split("/")[-1]
@@ -83,6 +133,19 @@ def fetchResource(target,type="images"):
     return path
 
 def search(tags:list[str],limit=10,page=1,service:str=None):
+    """
+    Searches for posts.
+
+    Args:
+        tags:list[str]  A list of tags to search for.
+        limit:int       The maximum number of posts to get. (default: 10)
+        page:int        The page to retrieve posts from. (default: 1)
+        service:str     The service to send the request to.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
     success,body = apiReq("posts.json",{
         "limit":limit,
         "tags":" ".join(tags),
@@ -91,6 +154,19 @@ def search(tags:list[str],limit=10,page=1,service:str=None):
     return success,body
 
 def getPosts(ids:list[int],limit=10,page=1,service:str=None):
+    """
+    Searches for posts.
+
+    Args:
+        ids:list[int]   A list of ids to retrieve.
+        limit:int       The maximum number of posts to get. (default: 10)
+        page:int        The page to retrieve posts from. (default: 1)
+        service:str     The service to send the request to.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
     if len(ids) == 0: return True,{"posts":[]}
     tags = " ".join([f"~id:{x}" for x in ids])
     return apiReq("posts.json",{
@@ -99,14 +175,48 @@ def getPosts(ids:list[int],limit=10,page=1,service:str=None):
         "page":page
     },service=service)
 
-def getPost(id:int):
-    return apiReq(f"posts/{id}.json",{})
+def getPost(id:int,service:str=None):
+    """
+    Gets a post.
 
-def searchWiki(search:str,limit=10):
+    Args:
+        id:int          The ID of the post to retrieve.
+        service:str     The service to send the request to.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
+    return apiReq(f"posts/{id}.json",{},service=service)
+
+def searchWiki(search:str,limit=10,service:str=None):
+    """
+    Searches for wiki posts.
+
+    Args:
+        search:str      Title search
+        limit:int       How many results to retrieve.
+        service:str     The service to send the request to.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
     return apiReq(f"wiki_pages.json",{
         "search[title]":search,
         "limit":limit
-    })
+    },service=service)
 
-def getTag(id:int):
-    return apiReq(f"tags/{id}.json")
+def getTag(id:int,service:str=None):
+    """
+    Gets a tag.
+
+    Args:
+        id:int          The ID of the tag to retrieve.
+        service:str     The service to send the request to.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
+    return apiReq(f"tags/{id}.json",service=service)

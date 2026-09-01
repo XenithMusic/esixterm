@@ -32,6 +32,19 @@ class CChar:
         return f"§{codestr}§"
 
 class CString:
+    """
+    Colored strings.
+
+    Usage:
+        "§(ansiColorCode)(flags)§color" results in a colored string.
+        Multiple color codes can be specified, like §30;41§
+    Flags:
+        b: bold
+        i: italic
+        s: strikethrough
+        u: underline
+        d: dark foreground (equivalent to a color of 30)
+    """
     def __init__(self,text:str):
         self.chrs = []
         self.set_text(text)

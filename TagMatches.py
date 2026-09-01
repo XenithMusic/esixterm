@@ -2,12 +2,26 @@ import shlex
 
 
 def getAllTags(post:dict) -> list[str]:
+    """
+    Returns a list of all tags the post has.
+
+    Args:
+        post:dict   The post.
+    """
     final = []
     for i in post["tags"].values():
         final += i
     return final
 
 def matchTag(tags:list[str],post:dict,match:str) -> bool:
+    """
+    Returns true if the tag is applicable.
+
+    Args:
+        tags:list[str]  A list of tags applicable to the post.
+        post:dict       The post.
+        match:str       The tag to match.
+    """
     tag = match.lstrip("~-")
     if ":" in tag:
         rightaliases = {
@@ -119,6 +133,14 @@ def matchTag(tags:list[str],post:dict,match:str) -> bool:
     return hit
 
 def matchTags(post:dict,match:list[str],whenEmpty=True) -> bool:
+    """
+    Returns true if all tags are applicable.
+
+    Args:
+        post:dict           The post.
+        match:list[str]     The tag to match.
+        whenEmpty:bool      What to return when no tags are passed. (default: True)
+    """
     if len(match) == 0:
         return whenEmpty
     tags = getAllTags(post)
@@ -143,5 +165,13 @@ def matchTags(post:dict,match:list[str],whenEmpty=True) -> bool:
     return True
 
 def matchAnyTagQualifier(post:dict,matches:list[str],whenEmpty=True) -> bool:
+    """
+    Returns true if any tag qualifier passed is applicable.
+
+    Args:
+        post:dict           The post.
+        matches:list[str]   The tag qualifiers to match.
+        whenEmpty:bool      What to return when no tags are passed. (default: True)
+    """
     matches = [shlex.split(x) for x in matches if not x.startswith("!")]
     return any([matchTags(post,x,whenEmpty) for x in matches])
