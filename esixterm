@@ -267,8 +267,8 @@ def showFullView(id):
     movup(movedLeft)
     curx(leftsize+1)
     desc = DText.renderDText(post["description"])
-    desc.split("\n")
     desc = CString(desc).wrap(rightsize)
+    desc = CString("\n").join(desc).parse().split("\n")
     for i in desc:
         movedRight = prints(i,movedLines=movedRight)
         curx(leftsize+1)
