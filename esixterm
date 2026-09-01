@@ -20,6 +20,7 @@ import TagMatches
 config.registerKey("username","",kind="conf.json")
 config.registerKey("apiKey","",kind="conf.json")
 config.registerKey("threadedWorkers",8,kind="conf.json")
+config.registerKey("oldAltLeftRightBehavior",False,kind="conf.json")
 conf = config.getConfig(kind="conf.json")
 config.registerKey("tags",[],kind="faves.json")
 config.registerKey("posts",[],kind="faves.json")

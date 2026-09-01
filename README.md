@@ -61,8 +61,8 @@ For example, to search in the interactive environment, you would type `[esixterm
 ### Keybinds:
 |Keybind|Action|
 |-------|------|
-|`[ALT]+[Right]`|Seek to the next page in the active search|
-|`[ALT]+[Left]`|Seek to the last page in the active search|
+|`[ALT]+[Right]`|Seek to the next page in the active search. Seeks between posts if there is an active post instead.|
+|`[ALT]+[Left]`|Seek to the last page in the active search. Seeks between posts if there is an active post instead.|
 |`[ALT]+[Up]`|Repeat last search|
 |`[ALT]+[Down]`|Show last viewed post|
 |`[UP]`|Seek command history (older commands)|

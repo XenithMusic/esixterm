@@ -148,6 +148,7 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
             if c == "\x1b":
                 seq = readseq()
                 last = config.getConfig("last.json")
+                conf = config.getConfig(kind="conf.json")
                 if seq == "\x1b[A": # up
                     historyIndex = min(len(hist)-1,historyIndex+1)
                     typed = hist[historyIndex]
@@ -162,14 +163,14 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
                     cursorPos = max(cursorPos-1,0)
                 elif seq == "\x1b[1;3C": # ctrl right
                     action = last["action"]
-                    if action == "search":
+                    if action == "search" or conf["oldAltLeftRightBehavior"]:
                         typed = "page fore"
                     elif action == "view":
                         typed = "view fore"
                     break
                 elif seq == "\x1b[1;3D": # ctrl left
                     action = last["action"]
-                    if action == "search":
+                    if action == "search" or conf["oldAltLeftRightBehavior"]:
                         typed = "page back"
                     elif action == "view":
                         typed = "view back"
