@@ -7,8 +7,9 @@ url="https://github.com/XenithMusic/esixterm"
 license=('GPLv3')
 depends=('python' 'python-platformdirs' 'python-requests' 'python-webcolors' 'python-term-image')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/XenithMusic/esixterm/archive/refs/tags/$pkgver.tar.gz")
-sha256sums=('021c905ab6e6f95cd248c64c118305f429831c68cc33e6d2fa9b0d2e83da456c')
+sha256sums=('262b97e06f10d7400de9210436b1c73f0bea98d48a3004fe1206565e14684ba0')
 conflicts=('esixterm-git')
+provides=('esixterm')
 
 package() {
     # enter the source
