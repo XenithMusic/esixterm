@@ -1,5 +1,6 @@
 import math
 import textwrap,sys,tty,termios
+import Config as config
 from ColoredString import *
 def clear(fn=print):
     """
@@ -146,6 +147,7 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
             c = sys.stdin.read(1)
             if c == "\x1b":
                 seq = readseq()
+                last = config.getConfig("last.json")
                 if seq == "\x1b[A": # up
                     historyIndex = min(len(hist)-1,historyIndex+1)
                     typed = hist[historyIndex]
@@ -158,16 +160,24 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
                     cursorPos = min(cursorPos+1,len(typed))
                 elif seq == "\x1b[D": # left
                     cursorPos = max(cursorPos-1,0)
-                elif seq == "\x1b[1;5C": # ctrl right
-                    typed = "page fore"
+                elif seq == "\x1b[1;3C": # ctrl right
+                    action = last["action"]
+                    if action == "search":
+                        typed = "page fore"
+                    elif action == "view":
+                        typed = "view fore"
                     break
-                elif seq == "\x1b[1;5D": # ctrl left
-                    typed = "page back"
+                elif seq == "\x1b[1;3D": # ctrl left
+                    action = last["action"]
+                    if action == "search":
+                        typed = "page back"
+                    elif action == "view":
+                        typed = "view back"
                     break
-                elif seq in ["\x1b[1;5A"]: # ctrl up
+                elif seq in ["\x1b[1;3A"]: # ctrl up
                     typed = "l s"
                     break
-                elif seq in ["\x1b[1;5B"]: # ctrl down
+                elif seq in ["\x1b[1;3B"]: # ctrl down
                     typed = "l p"
                     break
             elif c in ["\r","\n"]:

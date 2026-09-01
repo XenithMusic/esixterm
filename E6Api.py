@@ -223,3 +223,31 @@ def getTag(id:int,service:str=None):
         data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
     """
     return apiReq(f"tags/{id}.json",service=service)
+
+def favoritePost(id:int,service:str=None):
+    """
+    Syncs a post favorite to the server.
+    
+    Args:
+        id:int          The ID of the tag to retrieve.
+        service:str     The service to send the request to.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
+    return apiReq(f"favorites.json",{"post_id":id},service=service,method="POST")
+
+def unfavoritePost(id:int,service:str=None):
+    """
+    Removes a post favorite from the server.
+    
+    Args:
+        id:int          The ID of the tag to retrieve.
+        service:str     The service to send the request to.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
+    return apiReq(f"favorites/{id}.json",{},service=service,method="DELETE")

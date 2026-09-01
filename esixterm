@@ -29,6 +29,8 @@ config.registerKey("query","",kind="last.json")
 config.registerKey("querypage",1,kind="last.json")
 config.registerKey("querymaxpage",1,kind="last.json")
 config.registerKey("post",1,kind="last.json")
+config.registerKey("action","search",kind="last.json")
+config.registerKey("viewidx",1,kind="last.json")
 last = config.getConfig(kind="last.json")
 config.registerKey("tags",[ # default blacklist
     # health
@@ -74,10 +76,8 @@ allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlin
 allowedFaves = "'post', 'tag'"
 
 ap.add_argument("command",nargs="?",help=f"The command to perform. One of {allowedCmds}",default="persist")
-ap.add_argument("-s","--showall",help="Disables the blacklist for this query.",action="store_true")
 cmdargs,remaining = ap.parse_known_args()
-if cmdargs.showall:
-    effectiveBlacklist = []
+
 aliases = {
     "s":"search",
     "v":"view",
@@ -103,9 +103,9 @@ if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"esixterm {cmdargs.command}",description="An e621 viewer for the commandline.")
 match cmdargs.command:
     case "blacklist":
-        ap2.add_argument("-r","--remove",default=False,help="Removes from your blacklist instead of adding.",action="store_true")
-        ap2.add_argument("-s","--show",default=False,help="Shows your favorites",action="store_true")
+        ap2.add_argument("-s","--show",default=False,help="Shows your blacklist",action="store_true")
         ap2.add_argument("-p","--page",help="The target page.",default=1,type=int)
+        ap2.add_argument("-t","--toggle",default=False,help="Toggles the blacklist.",action="store_true")
     case "favorite":
         ap2.add_argument("type",help=f"One of {allowedFaves}")
         ap2.add_argument("which",nargs='?',help="'last', a numeric id, or a search query that will result in one of (type) only.")
@@ -114,6 +114,7 @@ match cmdargs.command:
         ap2.add_argument("-p","--page",help="The target page. (10 posts per page, 30 tags per page)",default=1,type=int)
     case "persist":
         hist = []
+        printw("Type §32§help§§ for help!")
         try:
             while True:
                 cmd = inputc(CString("§35§[esixterm]§§ "),hist)
@@ -149,7 +150,7 @@ match cmdargs.command:
     case "id":
         ap2.add_argument("id",help="ID of the post to show.")
     case "view":
-        ap2.add_argument("idx",help="Index from the last search to show.")
+        ap2.add_argument("idx",help=f"Index from the last search to show. Can be one of {allowedPageDirs}")
     case "last":
         ap2.add_argument("type",help=f"One of {lastAllowedTypes}")
         ap2.add_argument("-p","--page",help="Target page for 'search' type.",default=None,type=int)
@@ -194,6 +195,18 @@ aliases = {
             ",":"previous"
         }
     },
+    "view":{
+        "idx":{
+            "f":"fore",
+            "b":"back",
+            "n":"next",
+            "p":"previous",
+            "last":"back",
+            "l":"back",
+            ".":"next",
+            ",":"previous"
+        }
+    },
     "copy":{
         "what":{
             "i":"img",
@@ -201,7 +214,9 @@ aliases = {
             "p":"post",
             "pl":"post",
             "postlink":"post",
-            "share":"post"
+            "share":"post",
+            "link":"post",
+            "l":"post"
         }
     }
 }
@@ -306,6 +321,7 @@ def showListView(posts,statusString):
             blacklistCt += 1
             continue
         permittedPosts.append(post)
+    blacklistWithNoDisables = [x.lstrip("!") for x in blacklist["tags"]]
     if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt != 1 else ''} were blacklisted)")
     for i,post in enumerate(permittedPosts):
         downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews",service="https://e621.net")
@@ -347,7 +363,7 @@ def showListView(posts,statusString):
         if len(fourthRow) > 1: movedLines = printw(CString(" ").join(fourthRow),wrapLen=wrapLen,movedLines=movedLines)
         movedLines = prints("",movedLines=movedLines)
         movedLines = printw(f"§b§Rating: {colorRating(post["rating"])}",wrapLen=wrapLen,movedLines=movedLines)
-        if TagMatches.matchAnyTagQualifier(post,blacklist["tags"]):
+        if TagMatches.matchAnyTagQualifier(post,blacklistWithNoDisables):
             movedLines = printw(f"",movedLines=movedLines)
             movedLines = printw("§41d§This post would've been blacklisted!§§",movedLines=movedLines)
         # print(CString(" ").join([tagGeneral("general"),tagArtist("artist"),tagContributor("contributor"),tagCopyright("copyright"),tagCharacter("character"),tagSpecies("species"),tagInvalid("invalid"),tagMeta("meta"),tagLore("lore")]))
@@ -385,16 +401,28 @@ if cmdargs.command == "last":
         cmdargs.command = "id"
         args.id = last["post"]
 
+if cmdargs.command in ["search","view"]:
+    last["action"] = cmdargs.command
+
 match cmdargs.command:
     case "config":
         subprocess.run(["nano",config.getConfPath("conf.json")])
     case "blacklist":
-        if args.show:
+        print(args)
+        time.sleep(1)
+        if args.toggle:
+            blacklist["enabled"] = not blacklist["enabled"]
+            printw(("§33§Blacklist toggled off!" if not blacklist["enabled"] else "§32§Blacklist toggled on!"))
+        elif args.show:
             per = 30
             page = args.page
             paginated = blacklist["tags"][(page-1)*per:page*per]
             for item in paginated:
-                printw(("§31§" if item.startswith("!") else "§32§") + item + (" (disabled)" if item.startswith("!") else ""))
+                if not blacklist["enabled"]:
+                    printw("§33§" + item + " (blacklist toggled off)")
+
+                else:
+                    printw(("§31§" if item.startswith("!") else "§32§") + item + (" (disabled)" if item.startswith("!") else ""))
             printw("§97s§" + " "*termCols)
             printw(f"§b§Page §§{page} - §33b§Blacklist")
         else:
@@ -435,8 +463,10 @@ match cmdargs.command:
         config.saveConfig(blacklist,"blacklist.json")
     case "favorite":
         method = list.append
+        apiMethod = api.favoritePost
         if args.unfavorite:
             method = list.remove
+            apiMethod = api.unfavoritePost
         if args.show:
             types = { # (args.type):((faves index),(page size))
                 "tag":("tags",30),
@@ -483,10 +513,12 @@ match cmdargs.command:
                         method(faves["posts"],
                             last["post"]
                         )
+                        apiMethod(last["post"])
                     elif args.which.isdigit():
                         method(faves["posts"],
                             int(args.which)
                         )
+                        apiMethod(int(args.which))
                     else:
                         success,response = api.search(args.tags,page=args.page,limit=args.limit)
                         if success == False:
@@ -503,6 +535,7 @@ match cmdargs.command:
                                 method(faves["posts"],[
                                     posts[0]["id"]
                                 ])
+                                apiMethod(posts[0]["id"])
             config.saveConfig(faves,"faves.json")
     case "wiki":
         success,wikis = api.searchWiki(args.search,limit=10)
@@ -539,7 +572,19 @@ match cmdargs.command:
             elif args.what in ["imglink","imagelink"]:
                 Clipboard.copytext(post["file"]["url"])
     case "view":
-        showFullView(last["results"][str(args.idx)])
+        if args.idx.isdigit():
+            args.idx = int(args.idx)
+            last["viewidx"] = args.idx
+            showFullView(last["results"][str(args.idx)])
+        elif args.idx == "fore":
+            args.idx = min(last["viewidx"]+1,10)
+            showFullView(last["results"][str(args.idx)])
+        elif args.idx == "back":
+            args.idx = max(1,last["viewidx"]-1)
+            showFullView(last["results"][str(args.idx)])
+        last["viewidx"] = args.idx
+        printw("")
+        printw(f"§b§Idx: §§{args.idx}")
     case "id":
         showFullView(args.id)
     case "search":
