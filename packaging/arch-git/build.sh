@@ -1,2 +1,0 @@
-updpkgsums
-makepkg -f
