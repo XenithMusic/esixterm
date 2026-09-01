@@ -1,2 +1,2 @@
 updpkgsums
-makepkg
+makepkg -f
