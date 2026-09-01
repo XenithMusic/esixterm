@@ -1,0 +1,28 @@
+pkgname=esixterm-git
+pkgver=r18.g3ebe8cd
+pkgrel=1
+pkgdesc="An e621 viewer for the terminal"
+arch=('any')
+url="https://github.com/XenithMusic/esixterm"
+license=('GPLv3')
+depends=('python' 'python-platformdirs' 'python-requests' 'python-webcolors' 'python-term-image')
+source=("$pkgname.tar.gz::https://github.com/XenithMusic/esixterm/archive/refs/heads/master.tar.gz")
+sha256sums=('e60406f1cbbf6b109f92e2863f1437e1ec09365d9c92ddd25978a0f0f45212bb')
+
+pkgver() {
+    cd "$srcdir/esixterm-master"
+    printf 'r%s.g%s\n' \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
+}
+package() {
+    # enter the source
+    cd "$srcdir/esixterm-master"
+    # install all files except esixterm (because it has different permissions) to /usr/lib
+    find . -type f ! -name esixterm -exec install -Dm644 "{}" "$pkgdir/usr/lib/$pkgname/{}" \;
+    # install esixterm to /usr/lib
+    install -Dm755 esixterm "$pkgdir/usr/lib/$pkgname/esixterm"
+    # install esixterm to /usr/bin
+    install -d "$pkgdir/usr/bin"
+    ln -s "/usr/lib/$pkgname/esixterm" "$pkgdir/usr/bin/esixterm"
+}

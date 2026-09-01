@@ -1,0 +1,5 @@
+# pkgbuild artifacts
+src/
+pkg/
+*.tar.*
+*.sig
