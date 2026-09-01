@@ -146,11 +146,11 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
             c = sys.stdin.read(1)
             if c == "\x1b":
                 seq = readseq()
-                if seq == "\x1b[A":
+                if seq == "\x1b[A": # up
                     historyIndex = min(len(hist)-1,historyIndex+1)
                     typed = hist[historyIndex]
                     cursorPos = len(typed)
-                elif seq == "\x1b[B":
+                elif seq == "\x1b[B": # down
                     historyIndex = max(0,historyIndex-1)
                     typed = hist[historyIndex]
                     cursorPos = len(typed)
@@ -163,6 +163,12 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
                     break
                 elif seq == "\x1b[1;5D": # ctrl left
                     typed = "page back"
+                    break
+                elif seq in ["\x1b[1;5A"]: # ctrl up
+                    typed = "l s"
+                    break
+                elif seq in ["\x1b[1;5B"]: # ctrl down
+                    typed = "l p"
                     break
             elif c in ["\r","\n"]:
                 break

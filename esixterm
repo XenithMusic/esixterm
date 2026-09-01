@@ -132,7 +132,10 @@ match cmdargs.command:
                     case "clear":
                         clear()
                         continue
-                subprocess.run([__file__] + split)
+                try:
+                    subprocess.run([__file__] + split)
+                except KeyboardInterrupt as e:
+                    pass
         except KeyboardInterrupt as e:
             print("")
             exit(0)
@@ -217,12 +220,18 @@ def showFullView(id):
     if blacklisted:
         printw("§31b§The requested post is blacklisted! Toggle your blacklist off first.")
         return
+    if post["file"]["ext"] in ["gif","apng"]: # animated
+        printw("§41bd§Animated images don't immediately give input back! (Press CTRL+C to close post)")
+    
     if post["file"]["ext"] in ["swf","mp4","webm"]: # non-images
         printw("§41bd§Unable to display image. (swf,mp4,webm are currently unsupported)")
     else:
         path = api.fetchResource(post["file"]["url"],service="https://e621.net")
-        image = term_image.image.from_file(path)
-        image.draw(h_align="center",v_align="top",pad_height=1)
+        try:
+            image = term_image.image.from_file(path)
+            image.draw(h_align="center",v_align="top",pad_height=1)
+        except KeyboardInterrupt as e:
+            pass
         print("")
     movedLeft = 0
     movedRight = 0
