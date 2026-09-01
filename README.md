@@ -13,12 +13,12 @@ An e621 viewer for the terminal.
 You may install the python dependencies needed through the following methods:
 - pacman: `pacman -S python-platformdirs python-requests python-webcolors`
 - pip (automatic): `pip install -r requirements.txt`
-- pip (manual): `pip install platformdirs requests webcolors term-image`
+- pip (manual): `pip install platformdirs requests webcolors wcwidth term-image`
 
 ### MacOS
 
 - pip (automatic): `pip install -r requirements-macos.txt`
-- pip (manual): `platformdirs requests webcolors term-image pyobjc`
+- pip (manual): `platformdirs requests webcolors term-image wcwidth pyobjc`
 
 You may encounter a `RequiredDependencyException: jpeg` while installing term-image. This is from PIL. If this occurs, you may need to install libjpeg with `brew install jpeg`.
 
@@ -32,12 +32,12 @@ export CPPFLAGS="-I$(brew --prefix libjpeg)/include"
 
 ### PKGBUILD
 
-A PKGBUILD is available in `packaging/arch`. In order to install using that, cd into that directory, then run the following:
+A PKGBUILD is available at [XenithMusic/esixterm-packaging](https://github.com/XenithMusic/esixterm-packaging). In order to install using that, clone the PKGBUILD repo, cd into either `arch` or `arch-git` (`arch` is latest release, `arch-git` is from github), then run the following:
 ```bash
 updpkgsums
 makepkg
 ```
-Then install the resultant package (`esixterm-....pkg.tar.zst`) with `pacman -U`
+Then install the resulting package (`esixterm-....pkg.tar.zst`) with `pacman -U`
 
 ### Source
 Git clone this repository, or download the source code folder from a release.
