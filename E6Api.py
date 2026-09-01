@@ -90,7 +90,7 @@ def apiReq(endpoint:str,params:dict,service="https://e621.net",method="GET") -> 
     else:
         return True,r.json()
 
-def fetchResourceAsync(target,type="images") -> concurrent.futures.Future:
+def fetchResourceAsync(target,type="images",service="https://e621.net") -> concurrent.futures.Future:
     """
     Retrieves a file from a URL.
 
@@ -104,7 +104,7 @@ def fetchResourceAsync(target,type="images") -> concurrent.futures.Future:
     """
     return executor.submit(fetchResource,target,type)
 
-def fetchResource(target,type="images"):
+def fetchResource(target,type="images",service="https://e621.net"):
     """
     Retrieves a file from a URL.
 
@@ -123,6 +123,9 @@ def fetchResource(target,type="images"):
     path += element
     if os.path.exists(path):
         return path
+    if target.startswith("/"):
+        # assuming this is relative!
+        target = service + target
     r = requests.get(target,
                 headers=dfhead)
     if r.status_code == 404:

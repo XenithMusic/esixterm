@@ -216,10 +216,14 @@ def showFullView(id):
     blacklisted = TagMatches.matchAnyTagQualifier(post,effectiveBlacklist)
     if blacklisted:
         printw("§31b§The requested post is blacklisted! Toggle your blacklist off first.")
-    path = api.fetchResource(post["file"]["url"])
-    image = term_image.image.from_file(path)
-    image.draw(h_align="center",v_align="top",pad_height=1)
-    print("")
+        return
+    if post["file"]["ext"] in ["swf","mp4","webm"]: # non-images
+        printw("§41bd§Unable to display image. (swf,mp4,webm are currently unsupported)")
+    else:
+        path = api.fetchResource(post["file"]["url"],service="https://e621.net")
+        image = term_image.image.from_file(path)
+        image.draw(h_align="center",v_align="top",pad_height=1)
+        print("")
     movedLeft = 0
     movedRight = 0
     leftsize = math.floor(termCols/2)
@@ -295,7 +299,7 @@ def showListView(posts,statusString):
         permittedPosts.append(post)
     if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt != 1 else ''} were blacklisted)")
     for i,post in enumerate(permittedPosts):
-        downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews")
+        downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews",service="https://e621.net")
         pass
     for i,post in enumerate(permittedPosts):
         imgPath = downloads[i].result()
@@ -344,6 +348,7 @@ def showListView(posts,statusString):
         movedLines = printw("§90s§" + " "*termCols,movedLines=movedLines)
     printw(statusString)
     if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt > 1 else ''} were blacklisted)")
+    return permittedPosts
 
 if cmdargs.command == "page":
     cmdargs.command = "last"
@@ -520,7 +525,7 @@ match cmdargs.command:
                 raise ConnectionError(response)
             post = response["post"]
             if args.what in ["img","image"]:
-                path = api.fetchResource(post["file"]["url"])
+                path = api.fetchResource(post["file"]["url"],service="https://e621.net")
                 Clipboard.copyfile(path)
             elif args.what in ["imglink","imagelink"]:
                 Clipboard.copytext(post["file"]["url"])
@@ -538,12 +543,13 @@ match cmdargs.command:
             # print(" ".join(args.tags))
             # print(response)
             posts = response["posts"]
-        last["results"] = {(i+1):x["id"] for i,x in enumerate(posts)}
 
         # image = term_image.image.from_file("demopreview.png",height=10)
         # if image.width/termCols >= 0.5:
         #     image.width = math.floor(termCols*0.5)
-        showListView(posts,CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
+        permittedPosts = showListView(posts,CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
+        if permittedPosts:
+            last["results"] = {(i+1):x["id"] for i,x in enumerate(permittedPosts)}
                 
 
 config.saveConfig(last,"last.json")
