@@ -111,24 +111,28 @@ match cmdargs.command:
         ap2.add_argument("-p","--page",help="The target page. (10 posts per page, 30 tags per page)",default=1,type=int)
     case "persist":
         hist = []
-        while True:
-            cmd = inputc(CString("§35§[esixterm]§§ "),hist)
-            hist.append(cmd)
-            try:
-                split = shlex.split(cmd)
-            except ValueError as e:
-                print("bad command;"," ".join(e.args).lower())
-                continue
-            if len(split) == 0: continue
-            # persistent exclusive
-            match split[0]:
-                case "exit":
-                    exit(0)
+        try:
+            while True:
+                cmd = inputc(CString("§35§[esixterm]§§ "),hist)
+                hist.append(cmd)
+                try:
+                    split = shlex.split(cmd)
+                except ValueError as e:
+                    print("bad command;"," ".join(e.args).lower())
                     continue
-                case "clear":
-                    clear()
-                    continue
-            subprocess.run([__file__] + split)
+                if len(split) == 0: continue
+                # persistent exclusive
+                match split[0]:
+                    case "exit":
+                        exit(0)
+                        continue
+                    case "clear":
+                        clear()
+                        continue
+                subprocess.run([__file__] + split)
+        except KeyboardInterrupt as e:
+            print("")
+            exit(0)
     case "search":
         ap2.add_argument("tags",nargs='*',help="The tags to search for.")
         ap2.add_argument("-p","--page",help="The target page.",default=1,type=int)
