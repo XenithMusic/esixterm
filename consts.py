@@ -1,5 +1,5 @@
 class app:
-    version = "0.2.1"
+    version = "0.3.0"
     id = "esixterm"
 class author:
     e621 = "XenithLewd"
