@@ -68,15 +68,30 @@ api.init(conf["threadedWorkers"])
 
 api.setApiAuth(conf["username"],conf["apiKey"])
 
-ap = argparse.ArgumentParser(prog="esixterm",description="An e621 viewer for the commandline.",add_help=False)
+ap = argparse.ArgumentParser(prog="esixterm",description="An e621 viewer for the commandline.",add_help=False,formatter_class=argparse.RawTextHelpFormatter)
 
-allowedCmds = "'search' (s), 'view' (v), 'id' (#), 'page' (pg,p), 'help' (h,?), 'last' (l,<), 'copy' (cp,c), 'wiki' (w), 'favorite' (fave,f), 'blacklist' (bl, b), 'config' (cfg,cf)"
+allowedCmds = """
+    - 'search' (s),             Searches for posts based on a list of \033[1;32mtags\033[0m.
+    - 'view' (v),               Opens the full-screen viewer for a post specified by an \033[1;32midx\033[0m into a search.
+    - 'id' (#),                 Opens the full-screen viewer for an arbitrary post specified by an \033[1;32mid\033[0m.
+    - 'page' (pg,p),            Goes to the next or previous page in the most recent search.
+    - 'help' (h,?),             Shows this text.
+    - 'last' (l,<),             Shows the last opened search, or post.
+    - 'copy' (cp,c),            Copies the last post viewed in the fullscreen viewer to clipboard.
+    - 'wiki' (w),               \033[1;32mSearch\033[0mes for and shows a specified wiki page, or errors if none is found.
+    - 'favorite' (fave,f),      Adds a \033[1;32mpost\033[0m or \033[1;32mtag\033[0m to your favorites. Favorite posts will be synced to e621, however favorite tags will not.
+    - 'blacklist' (bl, b),      Opens the blacklist for editing, or \033[1;32m--show\033[0ms it.
+    - 'config' (cfg,cf)         Opens the primary config file for editing.
+    """
+# not done, so they're here.
+    # - 'download' (dl,d)         Downloads the last post viewed in the fullscreen viewer to a specified \033[1;32mpath\033[0m.
+    # - 'pool' (p),               Automatically searches for the pool, and enters the full-screen viewer for the first page.
 lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
 allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
 allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
 allowedFaves = "'post', 'tag'"
 
-ap.add_argument("command",nargs="?",help=f"The command to perform. One of {allowedCmds}",default="persist")
+ap.add_argument("command",nargs="?",help=f"The command to perform.\nOne of: {allowedCmds}\n\nHelp is available for each of the commands; pass \033[1;32m--help\033[0m or one of it's aliases to a command for more information.",default="persist")
 ap.add_argument("--silent",help=f"Disables most output.",action="store_true",default=False)
 cmdargs,remaining = ap.parse_known_args()
 
