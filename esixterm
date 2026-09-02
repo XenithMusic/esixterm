@@ -134,7 +134,9 @@ aliases = {
     "b":"blacklist",
     "cfg":"config",
     "cf":"config",
-    "debug":"version"
+    "debug":"version",
+    "dl":"download",
+    "d":"download"
 }
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"{consts.app.id} {cmdargs.command}",description="An e621 viewer for the commandline.")
