@@ -87,7 +87,6 @@ def apiReq(endpoint:str,params:dict,service="https://e621.net",method="GET") -> 
         success:bool    Whether or not the request succeeded.
         data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
     """
-    print("API REQUEST!!!!!!!!!!!!!!!!!!!!!!!!!")
     if service == None:
         service = "https://e621.net"
     r = requests.request(

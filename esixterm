@@ -3,6 +3,8 @@ if __name__ != "__main__":
     print("This is not intended to be imported as a library. Please run this from the commandline.")
 
 import argparse,term_image,term_image.image,term_image.utils,Clipboard
+import platform
+import shutil
 import os
 import tempfile
 import time
@@ -90,6 +92,7 @@ allowedCmds = """
     - \033[93;1m'blacklist'\033[0m (bl, b),      Opens the blacklist for editing, or \033[1;32m--show\033[0ms it.
     - 'config' (cfg,cf)         Opens the primary config file for editing.
     - 'copy' (cp,c),            Copies the last post viewed in the fullscreen viewer to clipboard.
+    - 'download' (dl,d)         Downloads the last post viewed in the fullscreen viewer to a specified \033[1;32mpath\033[0m.
     - \033[93;1m'favorite'\033[0m (fave,f),      Adds a \033[1;32mpost\033[0m or \033[1;32mtag\033[0m to your favorites. Favorite posts will be synced to e621, however favorite tags will not.
     - 'help' (h,?),             Shows this text.
     - 'id' (#),                 Opens the full-screen viewer for an arbitrary post specified by an \033[1;32mid\033[0m.
@@ -101,7 +104,6 @@ allowedCmds = """
     - 'wiki' (w),               \033[1;32mSearch\033[0mes for and shows a specified wiki page, or errors if none is found.
     """
 # not done, so they're here.
-    # - 'download' (dl,d)         Downloads the last post viewed in the fullscreen viewer to a specified \033[1;32mpath\033[0m.
 lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
 allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
 allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
@@ -131,11 +133,14 @@ aliases = {
     "bl":"blacklist",
     "b":"blacklist",
     "cfg":"config",
-    "cf":"config"
+    "cf":"config",
+    "debug":"version"
 }
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"{consts.app.id} {cmdargs.command}",description="An e621 viewer for the commandline.")
 match cmdargs.command:
+    case "version":
+        pass
     case "download":
         ap2.add_argument("path",nargs="?",default=None,help="Where to download the post to. (default is configurable)")
     case "pool":
@@ -453,6 +458,8 @@ if cmdargs.command in ["search","view"] and cmdargs.silent == False:
     last["action"] = cmdargs.command
 
 match cmdargs.command:
+    case "version":
+        printw(f"{consts.app.id} version {consts.app.version} on {platform.system()} ({(platform.platform())})")
     case "download":
         path = args.path
         if path == None:
@@ -460,10 +467,20 @@ match cmdargs.command:
             if not success:
                 raise ConnectionError(post)
             post = post["post"]
-            artists = post["tags"]["artist"]
+            artists:list[str] = post["tags"]["artist"]
+            artists.remove("conditional_dnp")
+            unexpanded = os.path.expanduser(f"~/Pictures/esixterm/__artist__/")
+            for i in artists:
+                os.makedirs(unexpanded.replace("__artist__",i),exist_ok=True)
+            unexpanded += f"{post["file"]["md5"]}.{post["file"]["ext"]}"
             primary = artists[0]
             nonprimary = artists[1:]
-            unexpanded = os.path.expanduser(f"~/Pictures/esixterm/___artist___/{post["file"]["md5"]}.{post["file"]["ext"]}")
+            origin = f"/tmp/esixterm/images/{post["file"]["url"].split('/')[-1]}"
+            firstpath = unexpanded.replace("__artist__",primary)
+            shutil.copyfile(origin,firstpath)
+            for i in nonprimary:
+                thispath = unexpanded.replace("__artist__",i)
+                shutil.copyfile(firstpath,thispath)
             # TODO: copy image and add tags lol
     case "pool":
         if args.pool == "last":
@@ -471,9 +488,9 @@ match cmdargs.command:
             if not success:
                 raise ConnectionError(post)
             pools:list[int] = post["post"]["pools"]
-            pools.sort()
-            targetPool = pools[0]
             if len(pools) > 1:
+                pools.sort()
+                targetPool = pools[0]
                 printw("§33§Warning: More than one pool; picking the oldest applicable one.")
                 printw("All pools are:")
                 for i in pools:
