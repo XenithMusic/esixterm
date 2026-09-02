@@ -1,3 +1,5 @@
+import typing
+
 import requests,requests.auth
 import urllib.request
 import consts
@@ -5,6 +7,20 @@ import tempfile
 import os
 import base64
 import concurrent,concurrent.futures
+import Config as config
+import time
+
+config.registerKey("posts",{},"cache.json")
+cache = config.getConfig("cache.json")
+"""
+each item in the cache is of the following format
+```json
+{
+    "date":0, // int; timestamp of when it was added
+    "data":{...}, // dict
+}
+```
+"""
 
 executor = None
 
@@ -12,6 +28,21 @@ dfhead = {"User-Agent":f"{consts.app.id}/{consts.app.version} (by {consts.author
 
 auth = None
 
+def clearCache(maxAge=24*60*60):
+    now = time.time()
+    items:dict[str,dict[str,typing.any]] = cache["posts"]
+
+    for k,item in items.items():
+        if now-item["date"] > maxAge:
+            items.pop(k)
+clearCache()
+def addCache(type:str,data:typing.any):
+    match type:
+        case "posts":
+            cache[type][data["post"]["id"]] = {
+                "date":time.time(),
+                "data":data
+            }
 def init(threadedWorkers=8):
     """
     Initializes the api.
@@ -22,6 +53,8 @@ def init(threadedWorkers=8):
     global executor
     if executor: executor.shutdown(True)
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=threadedWorkers)
+def quit():
+    config.saveConfig(cache,"cache.json")
 
 def setApiAuth(user,api):
     """
@@ -54,6 +87,7 @@ def apiReq(endpoint:str,params:dict,service="https://e621.net",method="GET") -> 
         success:bool    Whether or not the request succeeded.
         data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
     """
+    print("API REQUEST!!!!!!!!!!!!!!!!!!!!!!!!!")
     if service == None:
         service = "https://e621.net"
     r = requests.request(
@@ -149,12 +183,15 @@ def search(tags:list[str],limit=10,page=1,service:str=None):
         success:bool    Whether or not the request succeeded.
         data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
     """
-    success,body = apiReq("posts.json",{
+    success,response = apiReq("posts.json",{
         "limit":limit,
         "tags":" ".join(tags),
         "page":page
     },service=service)
-    return success,body
+    if success:
+        for post in response["posts"]:
+            addCache("posts",{"post":post})
+    return success,response
 
 def getPosts(ids:list[int],limit=10,page=1,service:str=None):
     """
@@ -172,11 +209,15 @@ def getPosts(ids:list[int],limit=10,page=1,service:str=None):
     """
     if len(ids) == 0: return True,{"posts":[]}
     tags = " ".join([f"~id:{x}" for x in ids])
-    return apiReq("posts.json",{
+    success,response = apiReq("posts.json",{
         "limit":limit,
         "tags":tags,
         "page":page
     },service=service)
+    if success:
+        for post in response["posts"]:
+            addCache("posts",{"post":post})
+    return success,response
 
 def getPost(id:int,service:str=None):
     """
@@ -190,7 +231,12 @@ def getPost(id:int,service:str=None):
         success:bool    Whether or not the request succeeded.
         data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
     """
-    return apiReq(f"posts/{id}.json",{},service=service)
+    if str(id) in cache["posts"]:
+        return True,cache["posts"][str(id)]["data"]
+    success,response = apiReq(f"posts/{id}.json",{},service=service)
+    if success:
+        addCache("posts",response)
+    return success,response
 
 def searchWiki(search:str,limit=10,service:str=None):
     """

@@ -80,17 +80,18 @@ allowedCmds = """
     - 'id' (#),                 Opens the full-screen viewer for an arbitrary post specified by an \033[1;32mid\033[0m.
     - 'last' (l,<),             Shows the last opened search, or post.
     - 'page' (pg,p),            Goes to the next or previous page in the most recent search.
+    - 'pool' (pl),              Automatically searches for the pool, and enters the full-screen viewer for the first page.
     - \033[93;1m'search'\033[0m (s),             Searches for posts based on a list of \033[1;32mtags\033[0m.
     - \033[93;1m'view'\033[0m (v),               Opens the full-screen viewer for a post specified by an \033[1;32midx\033[0m into a search.
     - 'wiki' (w),               \033[1;32mSearch\033[0mes for and shows a specified wiki page, or errors if none is found.
     """
 # not done, so they're here.
     # - 'download' (dl,d)         Downloads the last post viewed in the fullscreen viewer to a specified \033[1;32mpath\033[0m.
-    # - 'pool' (p),               Automatically searches for the pool, and enters the full-screen viewer for the first page.
 lastAllowedTypes = "'search' (s,query,q), 'post' (p)"
 allowedPageDirs = "'fore' (f,next,n,.), 'back' (b,last,l,previous,p), 'first', or any integer"
 allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlink,share)"
 allowedFaves = "'post', 'tag'"
+allowedPools = "'last', or any number representing a pool id."
 
 ap.add_argument("command",nargs="?",help=f"The command to perform.\nOne of: {allowedCmds}\n\nHelp is available for each of the commands; pass \033[1;32m--help\033[0m or one of it's aliases to a command for more information.",default="persist")
 ap.add_argument("--silent",help=f"Disables most output.",action="store_true",default=False)
@@ -120,6 +121,9 @@ aliases = {
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"{consts.app.id} {cmdargs.command}",description="An e621 viewer for the commandline.")
 match cmdargs.command:
+    case "pool":
+        ap2.add_argument("pool",default="last",nargs="?",help=f"What pool to open. One of {allowedPools} (default: 'last')")
+        ap2.add_argument("-i","--idx",default=1,help=f"Which post in the pool to open",type=int)
     case "blacklist":
         ap2.add_argument("-s","--show",default=False,help="Shows your blacklist",action="store_true")
         ap2.add_argument("-p","--page",help="The target page.",default=1,type=int)
@@ -235,6 +239,12 @@ aliases = {
             "share":"post",
             "link":"post",
             "l":"post"
+        }
+    },
+    "favorite":{
+        "type":{
+            "p":"post",
+            "t":"tag"
         }
     }
 }
@@ -395,6 +405,7 @@ def showListView(posts,statusString):
     if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt > 1 else ''} were blacklisted)")
     return permittedPosts
 
+
 if cmdargs.command == "page":
     cmdargs.command = "last"
     args.type = "search"
@@ -425,6 +436,30 @@ if cmdargs.command in ["search","view"] and cmdargs.silent == False:
     last["action"] = cmdargs.command
 
 match cmdargs.command:
+    case "pool":
+        if args.pool == "last":
+            success,post = api.getPost(last["post"])
+            if not success:
+                raise ConnectionError(post)
+            pools:list[int] = post["post"]["pools"]
+            pools.sort()
+            targetPool = pools[0]
+            if len(pools) > 1:
+                printw("§33§Warning: More than one pool; picking the oldest applicable one.")
+                printw("All pools are:")
+                for i in pools:
+                    printw(f"- {i}{' §§32(this one)§§' if i == targetPool else ''}")
+            elif len(pools) == 0:
+                printw("§41d§Error!§§ Post has no pools.")
+                exit(1)
+            args.pool = str(targetPool)
+        page = math.ceil(args.idx/10)
+        idx = ((args.idx-1)%10)+1
+        printw("§33§Loading pool...")
+        subprocess.run([__file__,"search",f"pool:{args.pool}","order:id","-p",f"{page}","--silent"])
+        printw("§33§Loading post...")
+        subprocess.run([__file__,"view",f"{idx}"])
+        exit(0)
     case "config":
         subprocess.run(["nano",config.getConfPath("conf.json")])
     case "blacklist":
@@ -506,6 +541,10 @@ match cmdargs.command:
                         raise ConnectionError(response)
                     showListView(response["posts"],CString(f"§b§Page §§{page} - §33b§Favorites"))
         else:
+            aliases = {
+                "l":"last"
+            }
+            args.which = aliases.get(args.which,args.which)
             match args.type:
                 case "tag":
                     if args.which == "last":
@@ -595,7 +634,10 @@ match cmdargs.command:
         if args.idx.isdigit():
             args.idx = int(args.idx)
             last["viewidx"] = args.idx
-            showFullView(last["results"][str(args.idx)])
+            if str(args.idx) in last["results"]:
+                showFullView(last["results"][str(args.idx)])
+            else:
+                printw("§41bd§Error!§§ Post is missing.")
         elif args.idx == "fore":
             if last["viewidx"] == len(last["results"]):
                 print("...reached end of page, going to next...")
@@ -603,8 +645,11 @@ match cmdargs.command:
                 subprocess.run([__file__,"page","fore","--silent"])
                 last = config.getConfig(kind="last.json")
                 last["viewidx"] = 0
-            args.idx = min(last["viewidx"]+1,len(last["results"]))
-            showFullView(last["results"][str(args.idx)])
+            args.idx = max(1,min(last["viewidx"]+1,len(last["results"])))
+            if str(args.idx) in last["results"]:
+                showFullView(last["results"][str(args.idx)])
+            else:
+                printw("§41bd§Error!§§ Post is missing.")
         elif args.idx == "back":
             if last["viewidx"] == 1:
                 print("...reached start of page, going to last...")
@@ -612,8 +657,11 @@ match cmdargs.command:
                 subprocess.run([__file__,"page","back","--silent"])
                 last = config.getConfig(kind="last.json")
                 last["viewidx"] = len(last["results"])+1
-            args.idx = max(1,last["viewidx"]-1)
-            showFullView(last["results"][str(args.idx)])
+            args.idx = max(1,min(last["viewidx"]-1,len(last["results"])))
+            if str(args.idx) in last["results"]:
+                showFullView(last["results"][str(args.idx)])
+            else:
+                printw("§41bd§Error!§§ Post is missing.")
         last["viewidx"] = args.idx
         printw("")
         printw(f"§b§Idx: §§{args.idx}")
@@ -634,8 +682,9 @@ match cmdargs.command:
         # if image.width/termCols >= 0.5:
         #     image.width = math.floor(termCols*0.5)
         permittedPosts = showListView(posts,CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
-        if permittedPosts:
+        if isinstance(permittedPosts,list):
             last["results"] = {(i+1):x["id"] for i,x in enumerate(permittedPosts)}
                 
 
 config.saveConfig(last,"last.json")
+api.quit()
