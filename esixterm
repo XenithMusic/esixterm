@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 if __name__ != "__main__":
     print("This is not intended to be imported as a library. Please run this from the commandline.")
-
+    exit(1)
+import requests
 import argparse,term_image,term_image.image,term_image.utils,Clipboard
 import platform
 import shutil
@@ -19,6 +20,7 @@ import shlex
 import subprocess
 import TagMatches
 import consts
+from importlib.metadata import version
 
 config.registerKey("username","",kind="conf.json")
 config.registerKey("apiKey","",kind="conf.json")
@@ -462,6 +464,13 @@ if cmdargs.command in ["search","view"] and cmdargs.silent == False:
 match cmdargs.command:
     case "version":
         printw(f"{consts.app.id} version {consts.app.version} on {platform.system()} ({(platform.platform())})")
+        printw(f"Python {platform.python_version()} (impl. {platform.python_implementation()})")
+        printw("\n§b§Dependencies:")
+        printw(f"- Platformdirs {version("platformdirs")}")
+        printw(f"- Requests {version("requests")}")
+        printw(f"- Webcolors {version("webcolors")}")
+        printw(f"- Term-Image {version("term-image")}")
+        printw(f"- Wcwidth {version("wcwidth")}")
     case "download":
         path = args.path
         if path == None:
