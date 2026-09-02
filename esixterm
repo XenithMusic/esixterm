@@ -102,6 +102,7 @@ allowedCmds = """
     - 'page' (pg,p),            Goes to the next or previous page in the most recent search.
     - 'pool' (pl),              Automatically searches for the pool, and enters the full-screen viewer for the first page.
     - \033[93;1m'search'\033[0m (s),             Searches for posts based on a list of \033[1;32mtags\033[0m.
+    - 'version' (ver,debug),        Shows version information useful for debugging.
     - \033[93;1m'view'\033[0m (v),               Opens the full-screen viewer for a post specified by an \033[1;32midx\033[0m into a search.
     - 'wiki' (w),               \033[1;32mSearch\033[0mes for and shows a specified wiki page, or errors if none is found.
     """
@@ -137,6 +138,7 @@ aliases = {
     "cfg":"config",
     "cf":"config",
     "debug":"version",
+    "ver":"version",
     "dl":"download",
     "d":"download"
 }
@@ -479,7 +481,8 @@ match cmdargs.command:
                 raise ConnectionError(post)
             post = post["post"]
             artists:list[str] = post["tags"]["artist"]
-            artists.remove("conditional_dnp")
+            if "conditional_dnp" in artists:
+                artists.remove("conditional_dnp")
             unexpanded = os.path.expanduser(f"~/Pictures/esixterm/__artist__/")
             for i in artists:
                 os.makedirs(unexpanded.replace("__artist__",i),exist_ok=True)
