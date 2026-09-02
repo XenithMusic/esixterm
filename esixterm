@@ -77,6 +77,7 @@ allowedCopies = "'image' (img,i), 'imagelink' (imglink,il), 'post' (p,pl,postlin
 allowedFaves = "'post', 'tag'"
 
 ap.add_argument("command",nargs="?",help=f"The command to perform. One of {allowedCmds}",default="persist")
+ap.add_argument("--silent",help=f"Disables most output.",action="store_true",default=False)
 cmdargs,remaining = ap.parse_known_args()
 
 aliases = {
@@ -227,6 +228,7 @@ if cmdargs.command in aliases:
             setattr(args,key,a[getattr(args,key)])
 
 def showFullView(id):
+    if cmdargs.silent: return
     last["post"] = id
     success,response = api.getPost(id)
     if success == False:
@@ -309,8 +311,6 @@ def showFullView(id):
     curx(0)
 
 def showListView(posts,statusString):
-    printw(statusString)
-    printw("§90s§" + " "*termCols)
     downloads:dict[int,api.concurrent.futures.Future] = {
 
     }
@@ -322,6 +322,9 @@ def showListView(posts,statusString):
             blacklistCt += 1
             continue
         permittedPosts.append(post)
+    if cmdargs.silent: return permittedPosts
+    printw(statusString)
+    printw("§90s§" + " "*termCols)
     blacklistWithNoDisables = [x.lstrip("!") for x in blacklist["tags"]]
     if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt != 1 else ''} were blacklisted)")
     for i,post in enumerate(permittedPosts):
@@ -402,7 +405,7 @@ if cmdargs.command == "last":
         cmdargs.command = "id"
         args.id = last["post"]
 
-if cmdargs.command in ["search","view"]:
+if cmdargs.command in ["search","view"] and cmdargs.silent == False:
     last["action"] = cmdargs.command
 
 match cmdargs.command:
@@ -578,9 +581,21 @@ match cmdargs.command:
             last["viewidx"] = args.idx
             showFullView(last["results"][str(args.idx)])
         elif args.idx == "fore":
-            args.idx = min(last["viewidx"]+1,10)
+            if last["viewidx"] == len(last["results"]):
+                print("...reached end of page, going to next...")
+                config.saveConfig(last,"last.conf")
+                subprocess.run([__file__,"page","fore","--silent"])
+                last = config.getConfig(kind="last.json")
+                last["viewidx"] = 0
+            args.idx = min(last["viewidx"]+1,len(last["results"]))
             showFullView(last["results"][str(args.idx)])
         elif args.idx == "back":
+            if last["viewidx"] == 1:
+                print("...reached start of page, going to last...")
+                config.saveConfig(last,"last.conf")
+                subprocess.run([__file__,"page","back","--silent"])
+                last = config.getConfig(kind="last.json")
+                last["viewidx"] = len(last["results"])+1
             args.idx = max(1,last["viewidx"]-1)
             showFullView(last["results"][str(args.idx)])
         last["viewidx"] = args.idx
