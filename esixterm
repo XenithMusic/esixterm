@@ -22,6 +22,7 @@ config.registerKey("username","",kind="conf.json")
 config.registerKey("apiKey","",kind="conf.json")
 config.registerKey("threadedWorkers",8,kind="conf.json")
 config.registerKey("oldAltLeftRightBehavior",False,kind="conf.json")
+config.registerKey("ageGatePassed",False,kind="conf.json")
 conf = config.getConfig(kind="conf.json")
 config.registerKey("tags",[],kind="faves.json")
 config.registerKey("posts",[],kind="faves.json")
@@ -58,6 +59,20 @@ config.registerKey("tags",[ # default blacklist
 config.registerKey("default",True,kind="blacklist.json")
 config.registerKey("enabled",True,kind="blacklist.json")
 blacklist = config.getConfig(kind="blacklist.json")
+
+if conf["ageGatePassed"] == False:
+    printw("§43§Hold up!§§\n")
+    printw("You must be atleast 18 years old to use this software!")
+    printw("By continuing, you confirm that you are at least §b§18 years old§§, and")
+    printw("agree to e621's §b|https://e621.net/terms_of_use§Terms of Use§§.")
+    printw("")
+    agree = input("\033[33mI am at least 18 years old, and agree to e621's Terms of Use\033[0m [y/N]: ")
+    if agree.lower() == "y":
+        conf["ageGatePassed"] = True
+        config.saveConfig(conf,"conf.json")
+    else:
+        printw("§31§You must agree in order to use this application.")
+        exit(1)
 
 effectiveBlacklist = blacklist["tags"] if blacklist["enabled"] else []
 
@@ -121,6 +136,8 @@ aliases = {
 if cmdargs.command in aliases: cmdargs.command = aliases[cmdargs.command]
 ap2 = argparse.ArgumentParser(prog=f"{consts.app.id} {cmdargs.command}",description="An e621 viewer for the commandline.")
 match cmdargs.command:
+    case "download":
+        ap2.add_argument("path",nargs="?",default=None,help="Where to download the post to. (default is configurable)")
     case "pool":
         ap2.add_argument("pool",default="last",nargs="?",help=f"What pool to open. One of {allowedPools} (default: 'last')")
         ap2.add_argument("-i","--idx",default=1,help=f"Which post in the pool to open",type=int)
@@ -436,6 +453,18 @@ if cmdargs.command in ["search","view"] and cmdargs.silent == False:
     last["action"] = cmdargs.command
 
 match cmdargs.command:
+    case "download":
+        path = args.path
+        if path == None:
+            success,post = api.getPost(last["post"])
+            if not success:
+                raise ConnectionError(post)
+            post = post["post"]
+            artists = post["tags"]["artist"]
+            primary = artists[0]
+            nonprimary = artists[1:]
+            unexpanded = os.path.expanduser(f"~/Pictures/esixterm/___artist___/{post["file"]["md5"]}.{post["file"]["ext"]}")
+            # TODO: copy image and add tags lol
     case "pool":
         if args.pool == "last":
             success,post = api.getPost(last["post"])
