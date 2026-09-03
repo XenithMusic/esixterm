@@ -5,7 +5,7 @@ An e621 viewer for the terminal.
 
 |Platform|Status|
 |-|-|
-|Windows|Untested. (planned)|
+|Windows|Tested, poor support, but functional.|
 |MacOS|Supported|
 |Linux|Supported|
 
