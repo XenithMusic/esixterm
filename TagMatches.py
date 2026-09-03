@@ -174,3 +174,9 @@ def matchAnyTagQualifier(post:dict,matches:list[str],whenEmpty=True) -> bool:
     """
     matches = [shlex.split(x) for x in matches if not x.startswith("!")]
     return any([matchTags(post,x,whenEmpty) for x in matches])
+def matchWhichTagQualifiers(post:dict,matches:list[str],whenEmpty=True) -> bool:
+    matches = [shlex.split(x) for x in matches if not x.startswith("!")]
+    hits = {" ".join(x):matchTags(post,x,whenEmpty) for x in matches}
+    hits = [k for k,v in hits.items() if v == True]
+    print(hits)
+    return hits

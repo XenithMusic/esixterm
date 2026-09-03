@@ -236,7 +236,20 @@ def getPost(id:int,service:str=None):
     if success:
         addCache("posts",response)
     return success,response
-
+def getFlag(id:int):
+    """
+    Gets a post's flag
+    
+    Args:
+        id:int          The ID of the post to retrieve.
+    
+    Returns:
+        success:bool    Whether or not the request succeeded.
+        data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
+    """
+    return apiReq(f"post_flags.json",{
+        "search[post_id]":id
+    })
 def searchWiki(search:str,limit=10,service:str=None):
     """
     Searches for wiki posts.

@@ -292,6 +292,17 @@ def showFullView(id):
     if blacklisted:
         printw("§31b§The requested post is blacklisted! Toggle your blacklist off first.")
         return
+    if post["flags"]["deleted"]:
+        printw("§41bd§The requested post is deleted!")
+    elif post["flags"]["flagged"]:
+        printw("§41bd§The requested post is flagged!")
+    if post["flags"]["flagged"] or post["flags"]["deleted"]:
+        time.sleep(1)
+        success,response = api.getFlag(id)
+        if success == False:
+            raise ConnectionError(response)
+        for i in response:
+            printw(f"§31b§Flag reason:§31i§ {i['reason']}")
     if post["file"]["ext"] in ["gif","apng"]: # animated
         printw("§41bd§Animated images don't immediately give input back! (Press CTRL+C to close post)")
     
@@ -299,11 +310,12 @@ def showFullView(id):
         printw("§41bd§Unable to display image. (swf,mp4,webm are currently unsupported)")
     else:
         path = api.fetchResource(post["file"]["url"],service="https://e621.net")
-        try:
-            image = term_image.image.from_file(path)
-            image.draw(h_align="center",v_align="top",pad_height=1)
-        except KeyboardInterrupt as e:
-            pass
+        if path != None:
+            try:
+                image = term_image.image.from_file(path)
+                image.draw(h_align="center",v_align="top",pad_height=1)
+            except KeyboardInterrupt as e:
+                pass
         print("")
     movedLeft = 0
     movedRight = 0
@@ -371,8 +383,8 @@ def showListView(posts,statusString):
     permittedPosts = []
     blacklistCt = 0
     for post in posts:
-        blacklisted = TagMatches.matchAnyTagQualifier(post,effectiveBlacklist)
-        if blacklisted:
+        blacklisted = TagMatches.matchWhichTagQualifiers(post,effectiveBlacklist)
+        if len(blacklisted) != 0:
             blacklistCt += 1
             continue
         permittedPosts.append(post)
@@ -421,9 +433,12 @@ def showListView(posts,statusString):
         if len(fourthRow) > 1: movedLines = printw(CString(" ").join(fourthRow),wrapLen=wrapLen,movedLines=movedLines)
         movedLines = prints("",movedLines=movedLines)
         movedLines = printw(f"§b§Rating: {colorRating(post["rating"])}",wrapLen=wrapLen,movedLines=movedLines)
-        if TagMatches.matchAnyTagQualifier(post,blacklistWithNoDisables):
+        blfor = TagMatches.matchWhichTagQualifiers(post,blacklistWithNoDisables)
+        if len(blfor) != 0:
             movedLines = printw(f"",movedLines=movedLines)
-            movedLines = printw("§41d§This post would've been blacklisted!§§",movedLines=movedLines)
+            movedLines = printw("§41d§Blacklisted!§§",movedLines=movedLines)
+            for tagq in blfor:
+                movedLines = printw(f"§31§ - {tagq}",movedLines=movedLines)
         # print(CString(" ").join([tagGeneral("general"),tagArtist("artist"),tagContributor("contributor"),tagCopyright("copyright"),tagCharacter("character"),tagSpecies("species"),tagInvalid("invalid"),tagMeta("meta"),tagLore("lore")]))
         # printw(CString.from_flike('{tagGeneral("general")} {tagArtist("artist")} {tagContributor("contributor")} {tagCopyright("copyright")} {tagCharacter("character")} {tagSpecies("species")} {tagInvalid("invalid")} {tagMeta("meta")} {tagLore("lore")}'),wrapLen=wrapLen)
         while movedLines < 10:
@@ -502,9 +517,9 @@ match cmdargs.command:
             if not success:
                 raise ConnectionError(post)
             pools:list[int] = post["post"]["pools"]
+            targetPool = 0
             if len(pools) > 1:
                 pools.sort()
-                targetPool = pools[0]
                 printw("§33§Warning: More than one pool; picking the oldest applicable one.")
                 printw("All pools are:")
                 for i in pools:
@@ -512,6 +527,7 @@ match cmdargs.command:
             elif len(pools) == 0:
                 printw("§41d§Error!§§ Post has no pools.")
                 exit(1)
+            targetPool = pools[0]
             args.pool = str(targetPool)
         page = math.ceil(args.idx/10)
         idx = ((args.idx-1)%10)+1

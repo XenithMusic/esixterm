@@ -1,5 +1,6 @@
 import math
-import textwrap,sys,tty,termios
+import platform
+import textwrap,sys
 import Config as config
 from ColoredString import *
 def clear(fn=print):
@@ -106,6 +107,24 @@ def prints(*values,sep=" ",end="\n",flush=False,movedLines=0):
     outstr = s + end
     print(outstr,end="",flush=flush)
     return outstr.count("\n") + movedLines
+
+def startinputc():
+    if platform.system() == "Windows":
+        return None
+    import tty,termios
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    tty.setcbreak(fd)
+    return old_settings
+    
+def endinputc(old_settings):
+    if platform.system() == "Windows":
+        return
+    import termios
+    fd = sys.stdin.fileno()
+    termios.tcsetattr(fd,termios.TCSADRAIN,old_settings)
+    
+
 def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
     """
     Custom input that has command history.
@@ -118,10 +137,8 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
     Returns:
         Typed text
     """
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
+    old_settings = startinputc()
     try:
-        tty.setcbreak(fd)
         typed = ""
         hist = commandHistory.copy()
         hist.append("")
@@ -193,6 +210,6 @@ def inputc(prompt:str,commandHistory:list[str]=[],end="\n"):
             hist[historyIndex] = typed
             redraw()
     finally:
-        termios.tcsetattr(fd,termios.TCSADRAIN,old_settings)
+        endinputc(old_settings)
     print("",end=end)
     return typed
