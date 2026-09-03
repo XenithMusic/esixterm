@@ -22,6 +22,10 @@ import TagMatches
 import consts
 from importlib.metadata import version
 
+nativeEditor = "nano"
+if platform.platform() == "Windows":
+    nativeEditor = "notepad.exe"
+
 config.registerKey("username","",kind="conf.json")
 config.registerKey("apiKey","",kind="conf.json")
 config.registerKey("threadedWorkers",8,kind="conf.json")
@@ -184,7 +188,7 @@ match cmdargs.command:
                         clear()
                         continue
                 try:
-                    subprocess.run([__file__] + split)
+                    subprocess.run([sys.executable,__file__] + split)
                 except KeyboardInterrupt as e:
                     pass
         except KeyboardInterrupt as e:
@@ -532,12 +536,12 @@ match cmdargs.command:
         page = math.ceil(args.idx/10)
         idx = ((args.idx-1)%10)+1
         printw("§33§Loading pool...")
-        subprocess.run([__file__,"search",f"pool:{args.pool}","order:id","-p",f"{page}","--silent"])
+        subprocess.run([sys.executable,__file__,"search",f"pool:{args.pool}","order:id","-p",f"{page}","--silent"])
         printw("§33§Loading post...")
-        subprocess.run([__file__,"view",f"{idx}"])
+        subprocess.run([sys.executable,__file__,"view",f"{idx}"])
         exit(0)
     case "config":
-        subprocess.run(["nano",config.getConfPath("conf.json")])
+        subprocess.run([nativeEditor,config.getConfPath("conf.json")])
     case "blacklist":
         print(args)
         time.sleep(1)
@@ -582,7 +586,7 @@ match cmdargs.command:
                 f.write(data)
             os.close(fd)
             try:
-                subprocess.run(["nano",path])
+                subprocess.run([nativeEditor,path])
                 with open(path,"r") as f:
                     data = f.read().split("\n")
                 data = [x.split("#")[0] for x in data if x]
@@ -718,7 +722,7 @@ match cmdargs.command:
             if last["viewidx"] == len(last["results"]):
                 print("...reached end of page, going to next...")
                 config.saveConfig(last,"last.conf")
-                subprocess.run([__file__,"page","fore","--silent"])
+                subprocess.run([sys.executable,__file__,"page","fore","--silent"])
                 last = config.getConfig(kind="last.json")
                 last["viewidx"] = 0
             args.idx = max(1,min(last["viewidx"]+1,len(last["results"])))
@@ -730,7 +734,7 @@ match cmdargs.command:
             if last["viewidx"] == 1:
                 print("...reached start of page, going to last...")
                 config.saveConfig(last,"last.conf")
-                subprocess.run([__file__,"page","back","--silent"])
+                subprocess.run([sys.executable,__file__,"page","back","--silent"])
                 last = config.getConfig(kind="last.json")
                 last["viewidx"] = len(last["results"])+1
             args.idx = max(1,min(last["viewidx"]-1,len(last["results"])))
