@@ -30,13 +30,13 @@ auth = None
 
 def clearCache(maxAge=24*60*60):
     now = time.time()
-    items:dict[str,dict[str,typing.any]] = cache["posts"]
+    items:dict[str,dict[str,typing.Any]] = cache["posts"]
 
     for k,item in items.items():
         if now-item["date"] > maxAge:
             items.pop(k)
 clearCache()
-def addCache(type:str,data:typing.any):
+def addCache(type:str,data:typing.Any):
     match type:
         case "posts":
             cache[type][data["post"]["id"]] = {
