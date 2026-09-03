@@ -23,7 +23,7 @@ import consts
 from importlib.metadata import version
 
 nativeEditor = "nano"
-if platform.platform() == "Windows":
+if platform.system() == "Windows":
     nativeEditor = "notepad.exe"
 
 config.registerKey("username","",kind="conf.json")
