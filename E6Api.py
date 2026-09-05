@@ -32,7 +32,8 @@ def clearCache(maxAge=24*60*60):
     now = time.time()
     items:dict[str,dict[str,typing.Any]] = cache["posts"]
 
-    for k,item in items.items():
+    toRemove = []
+    for k,item in list(items.items()):
         if now-item["date"] > maxAge:
             items.pop(k)
 clearCache()
@@ -54,6 +55,8 @@ def init(threadedWorkers=8):
     if executor: executor.shutdown(True)
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=threadedWorkers)
 def quit():
+    print("saving cache!")
+    print(len(cache["posts"]))
     config.saveConfig(cache,"cache.json")
 
 def setApiAuth(user,api):

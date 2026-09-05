@@ -22,6 +22,11 @@ import TagMatches
 import consts
 from importlib.metadata import version
 
+def shutdown(code=0):
+    config.saveConfig(last,"last.json")
+    api.quit()
+    exit(code)
+
 nativeEditor = "nano"
 if platform.system() == "Windows":
     nativeEditor = "notepad.exe"
@@ -182,7 +187,7 @@ match cmdargs.command:
                 # persistent exclusive
                 match split[0]:
                     case "exit":
-                        exit(0)
+                        shutdown()
                         continue
                     case "clear":
                         clear()
@@ -193,14 +198,14 @@ match cmdargs.command:
                     pass
         except KeyboardInterrupt as e:
             print("")
-            exit(0)
+            shutdown()
     case "search":
         ap2.add_argument("tags",nargs='*',help="The tags to search for.")
         ap2.add_argument("-p","--page",help="The target page.",default=1,type=int)
         ap2.add_argument("-l","--limit",help="Number of posts to show",default=10,type=int)
     case "help":
         ap.print_help()
-        exit()
+        shutdown()
     case "id":
         ap2.add_argument("id",help="ID of the post to show.")
     case "view":
@@ -530,7 +535,7 @@ match cmdargs.command:
                     printw(f"- {i}{' §§32(this one)§§' if i == targetPool else ''}")
             elif len(pools) == 0:
                 printw("§41d§Error!§§ Post has no pools.")
-                exit(1)
+                shutdown(1)
             targetPool = pools[0]
             args.pool = str(targetPool)
         page = math.ceil(args.idx/10)
@@ -539,7 +544,7 @@ match cmdargs.command:
         subprocess.run([sys.executable,__file__,"search",f"pool:{args.pool}","order:id","-p",f"{page}","--silent"])
         printw("§33§Loading post...")
         subprocess.run([sys.executable,__file__,"view",f"{idx}"])
-        exit(0)
+        shutdown()
     case "config":
         subprocess.run([nativeEditor,config.getConfPath("conf.json")])
     case "blacklist":
@@ -764,7 +769,5 @@ match cmdargs.command:
         permittedPosts = showListView(posts,CString(f"§b§Page §§{args.page} - §b§Query: §§{' '.join(args.tags)}"))
         if isinstance(permittedPosts,list):
             last["results"] = {(i+1):x["id"] for i,x in enumerate(permittedPosts)}
-                
 
-config.saveConfig(last,"last.json")
-api.quit()
+shutdown()
