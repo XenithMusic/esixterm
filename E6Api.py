@@ -185,7 +185,7 @@ def search(tags:list[str],limit=10,page=1,service:str=None):
         success:bool    Whether or not the request succeeded.
         data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
     """
-    success,response = apiReq("posts.json",{
+    success,response = apiReq("posts.json?v1=true",{ # HACK: The `v1=true` query parameter may break in the future. 
         "limit":limit,
         "tags":" ".join(tags),
         "page":page
