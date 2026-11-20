@@ -11,7 +11,7 @@ An e621 viewer for the terminal.
 
 ## Dependencies
 You may install the python dependencies needed through the following methods:
-- pacman: `pacman -S python-platformdirs python-requests python-webcolors`
+- pacman: `pacman -S python-platformdirs python-requests python-webcolors python-term-image`
 - pip (automatic): `pip install -r requirements.txt`
 - pip (manual): `pip install platformdirs requests webcolors wcwidth term-image`
 
