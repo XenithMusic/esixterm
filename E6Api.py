@@ -185,11 +185,14 @@ def search(tags:list[str],limit=10,page=1,service:str=None):
         success:bool    Whether or not the request succeeded.
         data:str|dict   If success == false, the error message (str). If success == true, the JSON response.
     """
-    success,response = apiReq("posts.json?v1=true",{ # HACK: The `v1=true` query parameter may break in the future. 
+    success,response = apiReq("posts.json",{
         "limit":limit,
         "tags":" ".join(tags),
-        "page":page
+        "page":page,
+        "mode":"extended"
     },service=service)
+    print(response)
+    response = {"posts":response}
     if success:
         for post in response["posts"]:
             addCache("posts",{"post":post})

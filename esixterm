@@ -312,13 +312,13 @@ def showFullView(id):
             raise ConnectionError(response)
         for i in response:
             printw(f"§31b§Flag reason:§31i§ {i['reason']}")
-    if post["file"]["ext"] in ["gif","apng"]: # animated
+    if post["files"]["meta"]["ext"] in ["gif","apng"]: # animated
         printw("§41bd§Animated images don't immediately give input back! (Press CTRL+C to close post)")
     
-    if post["file"]["ext"] in ["swf","mp4","webm"]: # non-images
+    if post["files"]["meta"]["ext"] in ["swf","mp4","webm"]: # non-images
         printw("§41bd§Unable to display image. (swf,mp4,webm are currently unsupported)")
     else:
-        path = api.fetchResource(post["file"]["url"],service="https://e621.net")
+        path = api.fetchResource(post["files"]["original"]["url"],service="https://e621.net")
         if path != None:
             try:
                 image = term_image.image.from_file(path)
@@ -349,14 +349,14 @@ def showFullView(id):
     movedLeft = printw(CString(" ").join(fourthRow),wrapLen=leftsize,movedLines=movedLeft)
     movedLeft = printw("",wrapLen=leftsize,movedLines=movedLeft)
     movedLeft = printw(f"§b§ID:       §§{post["id"]}",wrapLen=leftsize,movedLines=movedLeft)
-    movedLeft = printw(f"§b§MD5:      §§{post["file"]["md5"]}",wrapLen=leftsize,movedLines=movedLeft)
-    movedLeft = printw(f"§b§Size:     §§{post["file"]["width"]}x{post["file"]["height"]} ({math.floor(post["file"]["size"]/1024)} KiB)",wrapLen=leftsize,movedLines=movedLeft)
-    movedLeft = printw(f"§b§Type:     §§{post["file"]["ext"].upper()}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§MD5:      §§{post["files"]["meta"]["md5"]}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Size:     §§{post["files"]["original"]["width"]}x{post["files"]["original"]["height"]} ({math.floor(post["files"]["meta"]["size"]/1024)} KiB)",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Type:     §§{post["files"]["meta"]["ext"].upper()}",wrapLen=leftsize,movedLines=movedLeft)
     movedLeft = printw("",wrapLen=leftsize,movedLines=movedLeft)
 
     movedLeft = printw(f"§b§Rating:   {colorRating(post["rating"])}",wrapLen=leftsize,movedLines=movedLeft)
-    movedLeft = printw(f"§b§Score:    {post["score"]["total"]} (§32§+{post["score"]["up"]} §31§{post["score"]["down"]}§§)",wrapLen=leftsize,movedLines=movedLeft)
-    movedLeft = printw(f"§b§Faves:    {post["fav_count"]}",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Score:    {post["stats"]["score"]["total"]} (§32§+{post["stats"]["score"]["up"]} §31§{post["stats"]["score"]["down"]}§§)",wrapLen=leftsize,movedLines=movedLeft)
+    movedLeft = printw(f"§b§Faves:    {post["stats"]["fav_count"]}",wrapLen=leftsize,movedLines=movedLeft)
     movedLeft = printw("",wrapLen=leftsize,movedLines=movedLeft)
     postedTimestamp = datetime.datetime.fromisoformat(post["created_at"])
     since:datetime.timedelta = datetime.datetime.now(datetime.timezone.utc)-postedTimestamp
@@ -403,7 +403,7 @@ def showListView(posts,statusString):
     blacklistWithNoDisables = [x.lstrip("!") for x in blacklist["tags"]]
     if blacklistCt != 0: printw(f"(§b§{blacklistCt}§§ post{'s' if blacklistCt != 1 else ''} were blacklisted)")
     for i,post in enumerate(permittedPosts):
-        downloads[i] = api.fetchResourceAsync(post["preview"]["url"],type="previews",service="https://e621.net")
+        downloads[i] = api.fetchResourceAsync(post["files"]["preview"]["webp"],type="previews",service="https://e621.net")
         pass
     for i,post in enumerate(permittedPosts):
         imgPath = downloads[i].result()
